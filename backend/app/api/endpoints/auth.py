@@ -10,6 +10,7 @@ from app.core.security import (
     get_password_hash,
     create_access_token,
     create_refresh_token,
+    create_temp_token,
     decode_token,
 )
 from app.models import User, UserRole
@@ -17,6 +18,8 @@ from app.schemas import (
     Token,
     TokenRefresh,
     LoginRequest,
+    LoginResponse,
+    ChangePasswordRequest,
     UserCreate,
     UserResponse,
     UserUpdate,
@@ -26,7 +29,7 @@ from app.api.deps import get_current_user, role_required
 router = APIRouter()
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=LoginResponse)
 async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == request.username))
     user = result.scalar_one_or_none()
@@ -44,9 +47,43 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     user.last_login = datetime.now(timezone.utc)
     await db.commit()
 
+    # Force password change on first login
+    if user.password_change_required:
+        temp_token = create_temp_token(subject=user.id, scope="password_change")
+        return LoginResponse(
+            require_password_change=True,
+            temp_token=temp_token,
+        )
+
     access_token = create_access_token(subject=user.id)
     refresh_token = create_refresh_token(subject=user.id)
-    return Token(access_token=access_token, refresh_token=refresh_token)
+    return LoginResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.post("/change-password", response_model=LoginResponse)
+async def change_password(request: ChangePasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Change password using a temp token from forced password change flow."""
+    payload = decode_token(request.temp_token)
+    if not payload or payload.get("type") != "temp" or payload.get("scope") != "password_change":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired change-password token",
+        )
+    user_id = payload.get("sub")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    # Set new password and clear the flag
+    user.hashed_password = get_password_hash(request.new_password)
+    user.password_change_required = False
+    await db.commit()
+
+    # Issue full tokens now
+    access_token = create_access_token(subject=user.id)
+    refresh_token = create_refresh_token(subject=user.id)
+    return LoginResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 // Lazy-load page components for code splitting
 const Login = lazy(() => import('@/pages/Login'))
+const ChangePassword = lazy(() => import('@/pages/ChangePassword'))
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const DHCP = lazy(() => import('@/pages/DHCP'))
 const DNS = lazy(() => import('@/pages/DNS'))
@@ -55,6 +56,7 @@ export default function App() {
                 <Routes>
                   {/* Public routes */}
                   <Route path="/login" element={<Login />} />
+                  <Route path="/change-password" element={<ChangePassword />} />
 
                   {/* Protected routes */}
                   <Route

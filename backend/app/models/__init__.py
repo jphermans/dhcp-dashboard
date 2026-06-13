@@ -23,6 +23,7 @@ class User(Base):
     full_name = Column(String(100), nullable=True)
     role = Column(SAEnum(UserRole), nullable=False, default=UserRole.READONLY)
     is_active = Column(Boolean, default=True)
+    password_change_required = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
 

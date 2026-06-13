@@ -36,12 +36,14 @@ export default api
 // ─── Auth ───
 export const authApi = {
   login: (data: { username: string; password: string }) =>
-    api.post<import('@/types').TokenResponse>('/auth/login', data),
+    api.post<import('@/types').LoginResponse>('/auth/login', data),
+  changePassword: (data: import('@/types').ChangePasswordRequest) =>
+    api.post<import('@/types').LoginResponse>('/auth/change-password', data),
   me: () => api.get<import('@/types').User>('/auth/me'),
   register: (data: import('@/types').UserCreate) =>
     api.post<import('@/types').User>('/auth/register', data),
   refresh: (data: import('@/types').TokenRefresh) =>
-    api.post<import('@/types').TokenResponse>('/auth/refresh', data),
+    api.post<import('@/types').LoginResponse>('/auth/refresh', data),
   updateCurrentUser: (data: import('@/types').UserUpdate) =>
     api.patch<import('@/types').User>('/auth/me', data),
   listUsers: () =>

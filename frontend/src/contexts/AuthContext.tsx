@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { authApi } from '@/lib/api'
-import type { LoginRequest, TokenResponse, User } from '@/types'
+import type { LoginRequest, LoginResponse, ChangePasswordRequest, User } from '@/types'
 
 interface AuthState {
   user: User | null
@@ -8,7 +8,8 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
-  login: (data: LoginRequest) => Promise<void>
+  login: (data: LoginRequest) => Promise<boolean>
+  changePassword: (data: ChangePasswordRequest) => Promise<void>
   logout: () => void
 }
 
@@ -18,7 +19,8 @@ const AuthContext = createContext<AuthState>({
   isAuthenticated: false,
   isLoading: true,
   error: null,
-  login: async () => {},
+  login: async () => false,
+  changePassword: async () => {},
   logout: () => {},
 })
 
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearAuth = useCallback(() => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
+    localStorage.removeItem('temp_token')
     setToken(null)
     setUser(null)
     setIsLoading(false)
@@ -58,17 +61,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
   }, [token, clearAuth])
 
-  const login = useCallback(async (data: LoginRequest) => {
+  const login = useCallback(async (data: LoginRequest): Promise<boolean> => {
     setError(null)
     const res = await authApi.login(data)
-    const payload: TokenResponse = res.data
-    localStorage.setItem('access_token', payload.access_token)
+    const payload: LoginResponse = res.data
+    
+    // Check if password change is required
+    if (payload.require_password_change) {
+      localStorage.setItem('temp_token', payload.temp_token!)
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      setToken(null)
+      setUser(null)
+      setIsLoading(false)
+      return true  // Signal that password change is needed
+    }
+    
+    // Normal login flow
+    localStorage.setItem('access_token', payload.access_token!)
     if (payload.refresh_token) {
       localStorage.setItem('refresh_token', payload.refresh_token)
     }
-    setToken(payload.access_token)
-    // The useEffect will fire, validate token, and set user.
-    // But we need to await that; do a separate me call within login.
+    localStorage.removeItem('temp_token')
+    setToken(payload.access_token!)
+    try {
+      const userRes = await authApi.me()
+      setUser(userRes.data)
+    } catch {
+      setUser(null)
+    }
+    return false
+  }, [])
+
+  const changePassword = useCallback(async (data: ChangePasswordRequest) => {
+    setError(null)
+    const res = await authApi.changePassword(data)
+    const payload: LoginResponse = res.data
+    
+    // Store new tokens
+    localStorage.setItem('access_token', payload.access_token!)
+    if (payload.refresh_token) {
+      localStorage.setItem('refresh_token', payload.refresh_token)
+    }
+    localStorage.removeItem('temp_token')
+    setToken(payload.access_token!)
+    
     try {
       const userRes = await authApi.me()
       setUser(userRes.data)
@@ -90,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         error,
         login,
+        changePassword,
         logout,
       }}
     >

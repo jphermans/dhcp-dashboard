@@ -214,12 +214,66 @@ fi
 # ─── System Check ────────────────────────────────────────────────────────────
 info_box "Running system checks..."
 
+# Check total RAM
+TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
+echo -e "  ${CHK} Total RAM: ${GREEN}${TOTAL_RAM}MB${NC}"
+
 # Check if running on a Pi
+IS_PI=0
+PI_MODEL_CLASS=""
 if grep -qi "raspberry" /proc/device-tree/model 2>/dev/null; then
+    IS_PI=1
     PI_MODEL=$(tr -d '\0' < /proc/device-tree/model 2>/dev/null)
     echo -e "  ${CHK} Detected: ${GREEN}${PI_MODEL}${NC}"
+    # Classify model
+    if echo "$PI_MODEL" | grep -qi "Zero 2"; then
+        PI_MODEL_CLASS="zero2"
+    elif echo "$PI_MODEL" | grep -qi "Zero"; then
+        PI_MODEL_CLASS="zero"
+    elif echo "$PI_MODEL" | grep -qi "Pi 3"; then
+        PI_MODEL_CLASS="3"
+    elif echo "$PI_MODEL" | grep -qi "Pi 4"; then
+        PI_MODEL_CLASS="4"
+    elif echo "$PI_MODEL" | grep -qi "Pi 5"; then
+        PI_MODEL_CLASS="5"
+    else
+        PI_MODEL_CLASS="unknown"
+    fi
 else
     echo -e "  ${WARN} ${YELLOW}Not running on a Raspberry Pi${NC} (continuing anyway)"
+fi
+
+# Pi Zero (original) check – ARMv6 cannot run Node.js 20
+if [ "$PI_MODEL_CLASS" == "zero" ]; then
+    error_box "Raspberry Pi Zero (original) detected."
+    echo -e "  ${CROSS} Node.js 20 LTS requires ARMv7 or later (your Pi is ARMv6)."
+    echo -e "  ${CROSS} The frontend cannot be built on this device."
+    echo -e "  ${GRAY}  You may build the frontend on a newer Pi (or Linux machine)"
+    echo -e "  ${GRAY}  and transfer the 'dist' folder manually."
+    echo -e "\n${YELLOW}  Installation cannot continue.${NC}\n"
+    exit 1
+fi
+
+# Low memory warning for <1GB (typical Pi Zero 2, some Pi 3)
+if [ "$TOTAL_RAM" -lt 1000 ]; then
+    LOW_RAM=1
+    echo -e "  ${WARN} ${YELLOW}Less than 1GB RAM detected (${TOTAL_RAM}MB).${NC}"
+    echo -e "  ${YELLOW}  The frontend build will require swap space and may be slow.${NC}"
+    # Check swap
+    SWAP_TOTAL=$(free -m | awk '/^Swap:/{print $2}')
+    if [ "$SWAP_TOTAL" -lt 512 ]; then
+        echo -e "  ${CROSS} Swap is ${SWAP_TOTAL}MB – at least 512MB recommended."
+        echo -e "  ${GRAY}  Consider creating swap: sudo dphys-swapfile setup && sudo dphys-swapfile swapon${NC}"
+        printf "  ${LCYAN}  Continue anyway? [y/N]: ${NC}"
+        read cont_swap
+        if [[ ! "$cont_swap" =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    else
+        echo -e "  ${CHK} Swap: ${GREEN}${SWAP_TOTAL}MB available${NC}"
+    fi
+else
+    LOW_RAM=0
 fi
 
 # Check internet connectivity
@@ -431,7 +485,8 @@ try:
             full_name='Admin',
             hashed_password=get_password_hash('$ADMIN_PASS'),
             role='admin',
-            is_active=True
+            is_active=True,
+            password_change_required=True
         )
         session.add(new_user)
         session.commit()
@@ -455,6 +510,14 @@ if [ ! -d "$FRONTEND_SRC" ]; then
     cp -r "$PROJECT_ROOT/frontend" "$FRONTEND_SRC"
 fi
 cd "$FRONTEND_SRC"
+
+# Handle low-RAM devices (less than 1GB)
+if [ "${LOW_RAM:-0}" -eq 1 ]; then
+    echo -e "  ${WARN} Low memory detected – limiting Node.js heap to 256MB."
+    echo -e "  ${GRAY}  The build will be slow (10-30 minutes). Please be patient.${NC}"
+    export NODE_OPTIONS="--max-old-space-size=256"
+fi
+
 echo -e "  ${DOT} Installing Node dependencies (this may take a while)..."
 # Set production API URL via .env
 cat > "$FRONTEND_SRC/.env" <<EOF

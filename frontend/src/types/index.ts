@@ -4,10 +4,17 @@ export interface LoginRequest {
   password: string
 }
 
-export interface TokenResponse {
-  access_token: string
-  refresh_token: string
+export interface LoginResponse {
+  access_token?: string
+  refresh_token?: string
   token_type: string
+  require_password_change: boolean
+  temp_token?: string
+}
+
+export interface ChangePasswordRequest {
+  temp_token: string
+  new_password: string
 }
 export interface TokenRefresh {
   refresh_token: string

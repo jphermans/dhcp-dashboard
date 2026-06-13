@@ -36,9 +36,13 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setSubmitting(true)
     try {
-      await login(data)
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
-      navigate(from, { replace: true })
+      const needsPasswordChange = await login(data)
+      if (needsPasswordChange) {
+        navigate('/change-password', { replace: true })
+      } else {
+        const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/'
+        navigate(from, { replace: true })
+      }
     } catch {
       toast.error('Invalid credentials')
     } finally {

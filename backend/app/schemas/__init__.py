@@ -31,6 +31,7 @@ class UserResponse(BaseModel):
     full_name: Optional[str]
     role: str
     is_active: bool
+    password_change_required: bool = False
     created_at: datetime
     last_login: Optional[datetime]
 
@@ -47,6 +48,19 @@ class UserUpdate(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+    require_password_change: bool = False
+    temp_token: Optional[str] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    temp_token: str
+    new_password: str = Field(..., min_length=8)
 
 
 # --- DHCP schemas ---
