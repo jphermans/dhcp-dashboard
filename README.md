@@ -209,6 +209,8 @@ If you're running the Pi without a display:
   ```
   The OS will copy these files and connect automatically on first boot.
 
+  > ⚠️ **Important**: Replace `country=US` with your two‑letter ISO 3166‑1 country code (e.g., `GB` for United Kingdom, `DE` for Germany, `BE` for Belgium). Using the wrong code may cause WiFi connectivity issues.
+
 Once the Pi boots, find its IP (`ping dhcpdashboard.local` or check your router's DHCP table) and **SSH in**:
 ```bash
 ssh <username>@<pi-ip-address>

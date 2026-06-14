@@ -29,6 +29,20 @@ class User(Base):
 
     # relationships
     audit_logs = relationship("AuditLog", back_populates="user")
+    settings = relationship("UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
+
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    totp_secret = Column(String(64), nullable=True)
+    totp_enabled = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="settings")
 
 
 class DHCPLease(Base):
@@ -45,6 +59,19 @@ class DHCPLease(Base):
     is_static = Column(Boolean, default=False)
     subnet = Column(String(18), nullable=True)
     dhcp_server = Column(String(100), nullable=True)  # identifier for which server
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class DHCPReservation(Base):
+    __tablename__ = "dhcp_reservations"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    mac_address = Column(String(17), nullable=False, unique=True, index=True)
+    ip_address = Column(String(15), nullable=False)
+    hostname = Column(String(255), nullable=True)
+    description = Column(String(500), nullable=True)
+    enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -1,6 +1,10 @@
 """Security utilities: JWT handling and password hashing."""
 from datetime import datetime, timedelta, timezone
+import base64
 from typing import Optional
+import pyotp
+import io
+import qrcode
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from .config import settings
@@ -47,3 +51,30 @@ def decode_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+# ── TOTP / 2FA helpers ──────────────────────────────────────────────
+
+def generate_totp_secret() -> str:
+    """Return a new random base32 TOTP secret."""
+    return pyotp.random_base32()
+
+
+def get_totp_uri(username: str, secret: str, issuer: str = "DHCP Dashboard") -> str:
+    """Return the otpauth:// URI for QR-code generation."""
+    totp = pyotp.TOTP(secret)
+    return totp.provisioning_uri(name=username, issuer_name=issuer)
+
+
+def generate_qr_code_base64(uri: str) -> str:
+    """Return a base64-encoded PNG QR code for the TOTP URI."""
+    img = qrcode.make(uri)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def verify_totp(secret: str, code: str) -> bool:
+    """Verify a TOTP code against a secret."""
+    totp = pyotp.TOTP(secret)
+    return totp.verify(code)

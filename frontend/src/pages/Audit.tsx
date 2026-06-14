@@ -269,7 +269,7 @@ export default function AuditPage() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <TooltipProvider>
             <Table>
               <TableHeader>

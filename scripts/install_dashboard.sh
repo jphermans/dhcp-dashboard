@@ -683,7 +683,7 @@ if [ "$TEST_MODE" -eq 1 ]; then
     step_skip
 else
 DEPS="python3 python3-venv python3-pip git curl nginx openssl"
-apt-get install -y $DEPS &>/dev/null &
+$SUDO apt-get install -y $DEPS &>/dev/null &
 spinner $! "Installing system packages"
 # Verify key binaries
 if ! command -v python3 &>/dev/null; then
@@ -732,10 +732,10 @@ if [ ! -d "$INSTALL_DIR/backend" ]; then
     # Copy from current directory (assumes script is in project root)
     SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &>/dev/null && pwd )"
     PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-    $SUDO cp -r "$PROJECT_ROOT/backend" "$INSTALL_DIR/"
+    $SUDO cp -r "$PROJECT_ROOT/backend" "$INSTALL_DIR/" || { echo -e "  ${CROSS} Failed to copy backend files"; step_fail; exit 1; }
 fi
 # Create .env file interactively
-cat <<EOF | $SUDO tee "$INSTALL_DIR/backend/.env" > /dev/null
+cat <<EOF | $SUDO tee "$INSTALL_DIR/backend/.env" > /dev/null || { echo -e "  ${CROSS} Failed to create .env file"; step_fail; exit 1; }
 # DHCH Dashboard Backend Configuration
 DATABASE_URL=sqlite:///$DATA_DIR/dhcp_dashboard.db
 SECRET_KEY=$SECRET_KEY
@@ -749,6 +749,8 @@ FRONTEND_URL=http://$SERVER_IP
 ENVIRONMENT=production
 EOF
 $SUDO chmod 600 "$INSTALL_DIR/backend/.env"
+# Give ownership to the user so venv creation works in step 6
+$SUDO chown -R $SUDO_USER:$SUDO_USER "$INSTALL_DIR/backend" || { echo -e "  ${CROSS} Failed to change ownership of backend directory"; step_fail; exit 1; }
 step_ok
 fi
 
@@ -760,14 +762,31 @@ if [ "$TEST_MODE" -eq 1 ]; then
 else
 if [ ! -d "$VENV_DIR" ]; then
     python3 -m venv "$VENV_DIR" &>/dev/null
+    if [ ! -f "$VENV_DIR/bin/pip" ]; then
+        echo -e "  ${CROSS} Failed to create virtual environment (is python3-venv installed?)"
+        step_fail
+        exit 1
+    fi
 fi
 # Activate and install
+if [ ! -f "$VENV_DIR/bin/pip" ]; then
+    echo -e "  ${CROSS} Virtual environment pip not found"
+    step_fail
+    exit 1
+fi
 "$VENV_DIR/bin/pip" install --upgrade pip &>/dev/null &
 spinner $! "Upgrading pip"
+if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    echo -e "  ${CROSS} Failed to upgrade pip"
+    step_fail
+    exit 1
+fi
 "$VENV_DIR/bin/pip" install -r "$INSTALL_DIR/backend/requirements.txt" &>/dev/null &
 spinner $! "Installing Python packages"
-if ! "$VENV_DIR/bin/pip" freeze | grep -q fastapi; then
+if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    echo -e "  ${CROSS} Failed to install Python packages"
     step_fail
+    exit 1
 fi
 fi
 step_ok

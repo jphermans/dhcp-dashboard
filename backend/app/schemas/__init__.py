@@ -55,12 +55,42 @@ class LoginResponse(BaseModel):
     refresh_token: Optional[str] = None
     token_type: str = "bearer"
     require_password_change: bool = False
+    require_2fa: bool = False
     temp_token: Optional[str] = None
 
 
 class ChangePasswordRequest(BaseModel):
     temp_token: str
     new_password: str = Field(..., min_length=8)
+
+
+# --- TOTP / 2FA schemas ---
+class Setup2FAResponse(BaseModel):
+    secret: str
+    qr_code_base64: str
+    uri: str
+
+
+class Verify2FARequest(BaseModel):
+    temp_token: str
+    code: str = Field(..., min_length=6, max_length=6)
+
+
+class Disable2FARequest(BaseModel):
+    code: str = Field(..., min_length=6, max_length=6)
+
+
+class LoginWith2FARequest(BaseModel):
+    temp_token: str
+    code: str = Field(..., min_length=6, max_length=6)
+
+
+class AdminUserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    full_name: Optional[str] = None
+    role: str = "readonly"
 
 
 # --- DHCP schemas ---
@@ -212,6 +242,46 @@ class AlertConfigUpdate(BaseModel):
     notify_webhook: Optional[bool] = None
     threshold_value: Optional[float] = None
     cooldown_minutes: Optional[int] = None
+
+
+# --- DHCP server control schemas ---
+class DHCPStatusResponse(BaseModel):
+    enabled: bool
+    dhcp_range: Optional[str] = None
+    config_file: str = "/etc/dnsmasq.conf"
+    service_running: bool = False
+
+class DHCPToggleRequest(BaseModel):
+    enabled: bool
+
+
+# --- DHCP Reservation schemas ---
+class DHCPReservationCreate(BaseModel):
+    mac_address: str = Field(..., pattern=r'^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')
+    ip_address: str = Field(..., pattern=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+    hostname: Optional[str] = None
+    description: Optional[str] = None
+    enabled: bool = True
+
+
+class DHCPReservationUpdate(BaseModel):
+    ip_address: Optional[str] = Field(None, pattern=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+    hostname: Optional[str] = None
+    description: Optional[str] = None
+    enabled: Optional[bool] = None
+
+
+class DHCPReservationResponse(BaseModel):
+    id: str
+    mac_address: str
+    ip_address: str
+    hostname: Optional[str]
+    description: Optional[str]
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 # --- Dashboard schema ---

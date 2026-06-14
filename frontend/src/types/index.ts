@@ -228,10 +228,95 @@ export interface AuditLog {
   ip_address: string | null
 }
 
+// ──── DHCP Server Control ────
+export interface DHCPStatusResponse {
+  enabled: boolean
+  dhcp_range: string | null
+  config_file: string
+  service_running: boolean
+}
+
+export interface DHCPToggleRequest {
+  enabled: boolean
+}
+
+// ──── DHCP Static Reservations ────
+export interface DHCPReservationCreate {
+  ip_address: string
+  mac_address: string
+  hostname: string
+  description?: string | null
+  lease_time?: string | null
+  enabled?: boolean
+}
+
+export interface DHCPReservationUpdate {
+  ip_address?: string
+  mac_address?: string
+  hostname?: string
+  description?: string | null
+  lease_time?: string | null
+  enabled?: boolean
+}
+
+export interface DHCPReservationResponse {
+  id: string
+  ip_address: string
+  mac_address: string
+  hostname: string
+  description: string | null
+  lease_time: string | null
+  enabled: boolean
+  created_at: string
+  updated_at: string
+}
+
 // ──── Generic ────
 export interface PaginatedResponse<T> {
   items: T[]
   total: number
   page: number
   page_size: number
+}
+
+// ──── Two-Factor Authentication ────
+export interface TwoFactorSetupResponse {
+  secret: string
+  qr_code: string
+  uri: string
+}
+
+export interface TwoFactorVerifyRequest {
+  temp_token: string
+  code: string
+}
+
+export interface TwoFactorDisableRequest {
+  password: string
+}
+
+export interface TwoFactorLoginRequest {
+  temp_token: string
+  code: string
+}
+
+// ──── Admin User Management ────
+export interface AdminUserCreate {
+  username: string
+  email: string
+  password: string
+  full_name?: string
+  role: 'admin' | 'operator' | 'readonly'
+}
+
+export interface AdminUserResponse {
+  id: string
+  username: string
+  email: string
+  full_name: string | null
+  role: string
+  is_active: boolean
+  totp_enabled: boolean
+  created_at: string
+  last_login: string | null
 }

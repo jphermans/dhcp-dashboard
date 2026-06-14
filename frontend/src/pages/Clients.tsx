@@ -395,7 +395,7 @@ export default function ClientsPage() {
             {data ? `Showing ${filteredItems.length} of ${data.total} clients` : ''}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           {isError ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <p className="text-red-500 mb-2">Failed to load clients</p>

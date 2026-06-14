@@ -12,8 +12,12 @@ from app.core.security import (
     create_refresh_token,
     create_temp_token,
     decode_token,
+    generate_totp_secret,
+    get_totp_uri,
+    generate_qr_code_base64,
+    verify_totp,
 )
-from app.models import User, UserRole
+from app.models import User, UserRole, UserSettings
 from app.schemas import (
     Token,
     TokenRefresh,
@@ -23,6 +27,11 @@ from app.schemas import (
     UserCreate,
     UserResponse,
     UserUpdate,
+    Setup2FAResponse,
+    Verify2FARequest,
+    Disable2FARequest,
+    LoginWith2FARequest,
+    AdminUserCreate,
 )
 from app.api.deps import get_current_user, role_required
 
@@ -52,6 +61,18 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
         temp_token = create_temp_token(subject=user.id, scope="password_change")
         return LoginResponse(
             require_password_change=True,
+            temp_token=temp_token,
+        )
+
+    # Check if 2FA is required
+    settings_result = await db.execute(
+        select(UserSettings).where(UserSettings.user_id == user.id)
+    )
+    user_settings = settings_result.scalar_one_or_none()
+    if user_settings and user_settings.totp_enabled:
+        temp_token = create_temp_token(subject=user.id, scope="2fa_login")
+        return LoginResponse(
+            require_2fa=True,
             temp_token=temp_token,
         )
 
@@ -189,3 +210,185 @@ async def update_user(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+# ──────────────────────────── 2FA ────────────────────────────
+@router.get("/2fa/setup", response_model=Setup2FAResponse)
+async def setup_2fa(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate TOTP secret, URI and QR code for the current user."""
+    settings_result = await db.execute(
+        select(UserSettings).where(UserSettings.user_id == current_user.id)
+    )
+    user_settings = settings_result.scalar_one_or_none()
+
+    # Rotate secret on every setup request so a new QR is generated
+    secret = generate_totp_secret()
+    uri = get_totp_uri(secret, current_user.username)
+    qr_b64 = generate_qr_code_base64(uri)
+
+    if user_settings:
+        user_settings.totp_secret = secret
+        user_settings.totp_enabled = False  # not verified yet
+    else:
+        user_settings = UserSettings(
+            user_id=current_user.id,
+            totp_secret=secret,
+            totp_enabled=False,
+        )
+        db.add(user_settings)
+    await db.commit()
+
+    return Setup2FAResponse(secret=secret, qr_code_base64=qr_b64, uri=uri)
+
+
+@router.post("/2fa/verify")
+async def verify_2fa(
+    request: Verify2FARequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Verify a TOTP code and enable 2FA for the current user."""
+    settings_result = await db.execute(
+        select(UserSettings).where(UserSettings.user_id == current_user.id)
+    )
+    user_settings = settings_result.scalar_one_or_none()
+    if not user_settings or not user_settings.totp_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA is not set up. Call GET /auth/2fa/setup first.",
+        )
+    if not verify_totp(user_settings.totp_secret, request.code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid 2FA code",
+        )
+    user_settings.totp_enabled = True
+    await db.commit()
+    return {"message": "2FA enabled successfully"}
+
+
+@router.post("/2fa/disable")
+async def disable_2fa(
+    request: Disable2FARequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Disable 2FA after a valid TOTP confirmation."""
+    settings_result = await db.execute(
+        select(UserSettings).where(UserSettings.user_id == current_user.id)
+    )
+    user_settings = settings_result.scalar_one_or_none()
+    if not user_settings or not user_settings.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA is not enabled",
+        )
+    if not verify_totp(user_settings.totp_secret, request.code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid 2FA code",
+        )
+    user_settings.totp_secret = None
+    user_settings.totp_enabled = False
+    await db.commit()
+    return {"message": "2FA disabled"}
+
+
+@router.post("/login-2fa", response_model=LoginResponse)
+async def login_2fa(
+    request: LoginWith2FARequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Complete login with a TOTP code after receiving require_2fa."""
+    payload = decode_token(request.temp_token)
+    if not payload or payload.get("type") != "temp" or payload.get("scope") != "2fa_login":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired 2FA challenge token",
+        )
+    user_id = payload.get("sub")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    settings_result = await db.execute(
+        select(UserSettings).where(UserSettings.user_id == user.id)
+    )
+    user_settings = settings_result.scalar_one_or_none()
+    if not user_settings or not user_settings.totp_enabled or not user_settings.totp_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA is not enabled for this user",
+        )
+    if not verify_totp(user_settings.totp_secret, request.code):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid 2FA code",
+        )
+
+    user.last_login = datetime.now(timezone.utc)
+    await db.commit()
+    access_token = create_access_token(subject=user.id)
+    refresh_token = create_refresh_token(subject=user.id)
+    return LoginResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+# ─────────────────── Admin User Management ───────────────────
+@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def admin_create_user(
+    body: AdminUserCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(role_required(UserRole.ADMIN)),
+):
+    """Create a new user (admin only)."""
+    existing = await db.execute(
+        select(User).where((User.username == body.username) | (User.email == body.email))
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username or email already exists",
+        )
+    user = User(
+        username=body.username,
+        email=body.email,
+        hashed_password=get_password_hash(body.password),
+        full_name=body.full_name,
+        role=UserRole(body.role),
+        password_change_required=True,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_delete_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(role_required(UserRole.ADMIN)),
+):
+    """Delete a user (admin only). Cannot delete yourself."""
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account",
+        )
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    await db.delete(user)
+    # Also clean up associated settings
+    settings_result = await db.execute(
+        select(UserSettings).where(UserSettings.user_id == user_id)
+    )
+    for s in settings_result.scalars():
+        await db.delete(s)
+    await db.commit()
+    return None

@@ -20,10 +20,12 @@ import {
   ChevronRight,
   Wifi,
   Server,
-  CircleDot
+  CircleDot,
+  Power,
+  PowerOff
 } from 'lucide-react'
 
-import type { DHCPLease, DHCPLeaseCreate, DHCPLeaseUpdate, PaginatedResponse } from '@/types'
+import type { DHCPLease, DHCPLeaseCreate, DHCPLeaseUpdate, DHCPStatusResponse, PaginatedResponse } from '@/types'
 import { dhcpApi } from '@/lib/api'
 
 import {
@@ -56,6 +58,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
 
 // ---------- types ----------
 interface LeaseFormData {
@@ -467,6 +470,29 @@ export default function DHCPPage() {
     onError: () => toast.error('Failed to update lease')
   })
 
+  // ---------- DHCP toggle status query ----------
+  const dhcpStatusQuery = useQuery<DHCPStatusResponse>({
+    queryKey: ['dhcp-status'],
+    queryFn: () => dhcpApi.getStatus(),
+    refetchInterval: 30_000,
+  })
+
+  const dhcpEnabled = dhcpStatusQuery.data?.enabled ?? false
+
+  // ---------- DHCP toggle mutation ----------
+  const toggleMutation = useMutation({
+    mutationFn: (enable: boolean) => dhcpApi.toggleDhcp({ enabled: enable }),
+    onSuccess: (data) => {
+      toast.success(`DHCP server ${data.enabled ? 'enabled' : 'disabled'}`)
+      queryClient.invalidateQueries({ queryKey: ['dhcp-status'] })
+    },
+    onError: () => toast.error('Failed to toggle DHCP server'),
+  })
+
+  const handleToggleDhcp = () => {
+    toggleMutation.mutate(!dhcpEnabled)
+  }
+
   // ---------- handlers ----------
   const handleRelease = (lease: DHCPLease) => {
     releaseMutation.mutate(lease.id)
@@ -586,7 +612,7 @@ export default function DHCPPage() {
         {/* Active Leases tab */}
         <TabsContent value="active" className="mt-0">
           <Card className="bg-background/60 backdrop-blur-sm border-border/50 shadow-sm rounded-xl">
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               {leasesQuery.isLoading ? (
                 <Table>
                   <TableHeader>
@@ -717,7 +743,7 @@ export default function DHCPPage() {
         {/* Reservations tab */}
         <TabsContent value="reservations" className="mt-0">
           <Card className="bg-background/60 backdrop-blur-sm border-border/50 shadow-sm rounded-xl">
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               {leasesQuery.isLoading ? (
                 <Table>
                   <TableHeader>

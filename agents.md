@@ -249,6 +249,10 @@ Default section order:
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
+## Development Principles
+
+- **Resource-Optimized**: The application runs on Raspberry Pi 4 (4GB+ RAM). All code must be mindful of memory and CPU usage. Use efficient database queries, avoid memory leaks, minimize background processes, and monitor resource consumption.
+
 ## Child DOX Index
 
 - [scripts/](scripts/agents.md) — DHCP/DNS installer scripts and management tooling

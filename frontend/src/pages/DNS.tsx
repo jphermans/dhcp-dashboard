@@ -611,7 +611,7 @@ export default function DNSPage() {
               : 'Loading records...'}
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 overflow-x-auto">
           {recordsQuery.isLoading ? (
             <Table>
               <TableHeader>

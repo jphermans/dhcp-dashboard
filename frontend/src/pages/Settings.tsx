@@ -446,7 +446,7 @@ function AdminTab() {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="overflow-x-auto">
         {isLoading && (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (

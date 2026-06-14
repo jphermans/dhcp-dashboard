@@ -52,6 +52,24 @@ export const authApi = {
     api.get<import('@/types').User>(`/auth/users/${id}`),
   updateUser: (id: string, data: import('@/types').UserUpdate) =>
     api.patch<import('@/types').User>(`/auth/users/${id}`, data),
+
+  // Admin user management
+  createUser: (data: import('@/types').AdminUserCreate) =>
+    api.post<import('@/types').AdminUserResponse>('/auth/users', data),
+  deleteUser: (id: string) =>
+    api.delete(`/auth/users/${id}`),
+  listAdminUsers: () =>
+    api.get<import('@/types').AdminUserResponse[]>('/auth/users'),
+
+  // 2FA
+  setup2FA: () =>
+    api.post<import('@/types').TwoFactorSetupResponse>('/auth/2fa/setup'),
+  verify2FA: (data: import('@/types').TwoFactorVerifyRequest) =>
+    api.post<import('@/types').LoginResponse>('/auth/2fa/verify', data),
+  disable2FA: (data: import('@/types').TwoFactorDisableRequest) =>
+    api.post<import('@/types').LoginResponse>('/auth/2fa/disable', data),
+  login2FA: (data: import('@/types').TwoFactorLoginRequest) =>
+    api.post<import('@/types').LoginResponse>('/auth/2fa/login', data),
 }
 
 // ─── Dashboard ───
@@ -76,6 +94,20 @@ export const dhcpApi = {
     api.delete(`/dhcp/leases/${id}`),
   releaseLease: (id: string) =>
     api.patch<import('@/types').DHCPLease>(`/dhcp/leases/${id}/release`),
+  getStatus: () =>
+    api.get<import('@/types').DHCPStatusResponse>('/dhcp/status'),
+  toggleDhcp: (data: import('@/types').DHCPToggleRequest) =>
+    api.post<import('@/types').DHCPStatusResponse>('/dhcp/toggle', data),
+
+  // Static IP Reservations
+  listReservations: () =>
+    api.get<import('@/types').DHCPReservationResponse[]>('/dhcp/reservations'),
+  createReservation: (data: import('@/types').DHCPReservationCreate) =>
+    api.post<import('@/types').DHCPReservationResponse>('/dhcp/reservations', data),
+  updateReservation: (id: string, data: import('@/types').DHCPReservationUpdate) =>
+    api.put<import('@/types').DHCPReservationResponse>(`/dhcp/reservations/${id}`, data),
+  deleteReservation: (id: string) =>
+    api.delete(`/dhcp/reservations/${id}`),
 }
 
 // ─── DNS ───
