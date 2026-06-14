@@ -777,9 +777,18 @@ if [ "$TEST_MODE" -eq 1 ]; then
     step_skip
 else
 if [ ! -d "$VENV_DIR" ]; then
-    python3 -m venv "$VENV_DIR" &>/dev/null
+    # Capture stderr for diagnosis
+    VENV_ERR="$(python3 -m venv "$VENV_DIR" 2>&1 >/dev/null)"
     if [ ! -f "$VENV_DIR/bin/pip" ]; then
-        echo -e "  ${CROSS} Failed to create virtual environment (is python3-venv installed?)"
+        echo -e "  ${CROSS} Failed to create virtual environment"
+        echo -e "  ${GRAY}Error details:${NC}"
+        echo "$VENV_ERR" | head -10 | while IFS= read -r line; do
+            echo -e "  ${GRAY}  $line${NC}"
+        done
+        # Provide a hint if we recognize common issues
+        if echo "$VENV_ERR" | grep -iq "ensurepip"; then
+            echo -e "  ${YELLOW}Hint: Try 'sudo apt-get install --reinstall python3-venv python3-pip-whl'${NC}"
+        fi
         step_fail
         exit 1
     fi
@@ -791,15 +800,19 @@ if [ ! -f "$VENV_DIR/bin/pip" ]; then
     exit 1
 fi
 "$VENV_DIR/bin/pip" install --upgrade pip &>/dev/null &
-spinner $! "Upgrading pip"
-if [ ${PIPESTATUS[0]} -ne 0 ]; then
+PIPUPG_PID=$!
+spinner $PIPUPG_PID "Upgrading pip"
+wait $PIPUPG_PID
+if [ $? -ne 0 ]; then
     echo -e "  ${CROSS} Failed to upgrade pip"
     step_fail
     exit 1
 fi
 "$VENV_DIR/bin/pip" install -r "$INSTALL_DIR/backend/requirements.txt" &>/dev/null &
-spinner $! "Installing Python packages"
-if [ ${PIPESTATUS[0]} -ne 0 ]; then
+PIPINST_PID=$!
+spinner $PIPINST_PID "Installing Python packages"
+wait $PIPINST_PID
+if [ $? -ne 0 ]; then
     echo -e "  ${CROSS} Failed to install Python packages"
     step_fail
     exit 1
