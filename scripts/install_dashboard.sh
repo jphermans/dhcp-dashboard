@@ -848,36 +848,40 @@ else
 export DATABASE_URL="sqlite+aiosqlite:///$DATA_DIR/dhcp_dashboard.db"
 export SECRET_KEY="$SECRET_KEY"
 "$VENV_DIR/bin/python" -c "
-import os, sys
+import asyncio, os, sys
 sys.path.insert(0, '$INSTALL_DIR/backend')
-from app.db.session import engine
-from app.db.base import Base
-Base.metadata.create_all(bind=engine)
-print('Database tables created.')
 
+from app.db.session import engine, async_session_factory
+from app.db.base import Base
 from app.core.security import get_password_hash
 from app.models import User
-from app.db.session import SessionLocal
-session = SessionLocal()
-try:
-    existing = session.query(User).filter_by(username='$ADMIN_USER').first()
-    if not existing:
-        new_user = User(
-            username='$ADMIN_USER',
-            email='$ADMIN_USER@localhost',
-            full_name='Admin',
-            hashed_password=get_password_hash('$ADMIN_PASS'),
-            role='admin',
-            is_active=True,
-            password_change_required=True
-        )
-        session.add(new_user)
-        session.commit()
-        print('Admin user created.')
-    else:
-        print('Admin user already exists — skipping.')
-finally:
-    session.close()
+from sqlalchemy import select
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print('Database tables created.')
+
+    async with async_session_factory() as session:
+        result = await session.execute(select(User).where(User.username == '$ADMIN_USER'))
+        existing = result.scalar_one_or_none()
+        if not existing:
+            new_user = User(
+                username='$ADMIN_USER',
+                email='$ADMIN_USER@localhost',
+                full_name='Admin',
+                hashed_password=get_password_hash('$ADMIN_PASS'),
+                role='admin',
+                is_active=True,
+                password_change_required=True
+            )
+            session.add(new_user)
+            await session.commit()
+            print('Admin user created.')
+        else:
+            print('Admin user already exists — skipping.')
+
+asyncio.run(init_db())
 " 2>&1 | while read line; do echo -e "  ${DOT} ${GRAY}$line${NC}"; done
 if [ $? -ne 0 ]; then
     step_fail
