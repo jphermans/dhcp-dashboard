@@ -144,9 +144,24 @@ else
 fi
 
 # ── Pre-flight Checks ────────────────────────────────────────
-if [[ $EUID -ne 0 ]] && ! $TEST_MODE; then
-    error_box "This script must be run as root (sudo)."
+if [ "$EUID" -eq 0 ] && ! $TEST_MODE; then
+    echo
+    error_box "ERROR: ROOT USER DETECTED — Running as root is not allowed for security."
+    echo
+    echo -e "${CYAN}${BOLD}Quick Setup:${NC}"
+    echo -e "  ${BOLD}1.${NC} Create a new user:        ${BOLD}sudo adduser dashboard${NC}"
+    echo -e "  ${BOLD}2.${NC} Grant sudo privileges:     ${BOLD}sudo usermod -aG sudo dashboard${NC}"
+    echo -e "  ${BOLD}3.${NC} Switch to the new user:    ${BOLD}su - dashboard${NC}"
+    echo -e "  ${BOLD}4.${NC} Re-run this installer:     ${BOLD}./install_dhcp_dns.sh${NC}"
+    echo
     exit 1
+fi
+
+# ── SUDO wrapper for non-root execution ──────────────────────
+if $TEST_MODE; then
+    SUDO=""
+else
+    SUDO="sudo"
 fi
 
 if ! $TEST_MODE; then

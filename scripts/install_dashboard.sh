@@ -179,6 +179,37 @@ trap_cleanup() {
 }
 trap trap_cleanup INT TERM
 
+# ─── Root Check ──────────────────────────────────────────────────────────────
+if [ "$EUID" -eq 0 ]; then
+    hr "━"
+    echo -e "${RED}┌─ ${CROSS}  ERROR: ROOT USER DETECTED ${RED}─────────────────────────────────────┐${NC}"
+    echo -e "${RED}│${NC}"
+    echo -e "${RED}│${NC}  ${WHITE}Running this script as ${BOLD}root${NC}${WHITE} is not allowed for security reasons.${NC}"
+    echo -e "${RED}│${NC}  ${GRAY}Please create a regular user and run the script from that account.${NC}"
+    echo -e "${RED}│${NC}"
+    echo -e "${RED}│${NC}  ${LCYAN}${BOLD}Quick Setup:${NC}"
+    echo -e "${RED}│${NC}  ${GRAY}────────────────────────────────────────────────────────────────${NC}"
+    echo -e "${RED}│${NC}"
+    echo -e "${RED}│${NC}  ${CYAN}1.${NC} ${WHITE}Create a new user:${NC}"
+    echo -e "${RED}│${NC}     ${BOLD}sudo adduser dashboard${NC}"
+    echo -e "${RED}│${NC}"
+    echo -e "${RED}│${NC}  ${CYAN}2.${NC} ${WHITE}Grant sudo privileges:${NC}"
+    echo -e "${RED}│${NC}     ${BOLD}sudo usermod -aG sudo dashboard${NC}"
+    echo -e "${RED}│${NC}"
+    echo -e "${RED}│${NC}  ${CYAN}3.${NC} ${WHITE}Switch to the new user:${NC}"
+    echo -e "${RED}│${NC}     ${BOLD}su - dashboard${NC}"
+    echo -e "${RED}│${NC}"
+    echo -e "${RED}│${NC}  ${CYAN}4.${NC} ${WHITE}Re-run this installer:${NC}"
+    echo -e "${RED}│${NC}     ${BOLD}./install_dashboard.sh${NC}"
+    echo -e "${RED}│${NC}"
+    echo -e "${RED}└────────────────────────────────────────────────────────────────────────────┘${NC}"
+    hr "━"
+    exit 1
+fi
+
+# ── SUDO wrapper for non-root execution ──────────────────────
+SUDO="sudo"
+
 # ╔══════════════════════════════════════════════════════════════════════════════╗
 # ║                          WELCOME SCREEN                                      ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -203,13 +234,6 @@ echo -e "${DOT} ${WHITE}Systemd${GRAY} service for auto-start on boot${NC}"
 
 echo ""
 hr
-
-# ─── Privilege Check ────────────────────────────────────────────────────────
-if [[ $EUID -ne 0 ]]; then
-    error_box "This script must be run as root (use sudo)."
-    echo -e "${GRAY}  Please run: ${WHITE}sudo $0${NC}\n"
-    exit 1
-fi
 
 # ─── System Check ────────────────────────────────────────────────────────────
 info_box "Running system checks..."
@@ -397,9 +421,9 @@ STATIC_DIR="/var/www/dhcpdashboard"
 
 # ─── Step 1: System Package Update ────────────────────────────────────────
 step_start "1" "Updating system packages"
-apt-get update -qq &>/dev/null &
+$SUDO apt-get update -qq &>/dev/null &
 spinner $! "Updating package lists"
-apt-get upgrade -y -qq &>/dev/null &
+$SUDO apt-get upgrade -y -qq &>/dev/null &
 spinner $! "Upgrading packages"
 step_ok
 
@@ -421,9 +445,9 @@ if command -v node &>/dev/null; then
     echo -e "\n  ${CHK} Node.js already installed: ${GREEN}${NODE_VERSION}${NC}"
     step_skip
 else
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - &>/dev/null &
+    curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO bash - &>/dev/null &
     spinner $! "Adding NodeSource repository"
-    apt-get install -y nodejs &>/dev/null &
+    $SUDO apt-get install -y nodejs &>/dev/null &
     spinner $! "Installing Node.js"
     if ! command -v node &>/dev/null; then
         step_fail
@@ -433,7 +457,7 @@ fi
 
 # ─── Step 4: Create directories ───────────────────────────────────────────
 step_start "4" "Creating application directories"
-mkdir -p "$INSTALL_DIR" "$DATA_DIR" "$STATIC_DIR"
+$SUDO mkdir -p "$INSTALL_DIR" "$DATA_DIR" "$STATIC_DIR"
 step_ok
 
 # ─── Step 5: Copy backend code ────────────────────────────────────────────
@@ -479,6 +503,7 @@ step_ok
 # ─── Step 7: Initialize database ──────────────────────────────────────────
 step_start "7" "Initializing database and admin user"
 export DATABASE_URL="sqlite:///$DATA_DIR/dhcp_dashboard.db"
+export SECRET_KEY="$SECRET_KEY"
 "$VENV_DIR/bin/python" -c "
 import os, sys
 sys.path.insert(0, '$INSTALL_DIR/backend')

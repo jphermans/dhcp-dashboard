@@ -289,6 +289,22 @@ The interactive installer asks for network settings (IP, CIDR, gateway, DHCP ran
 
 ---
 
+## 📚 DOX Documentation
+
+This project uses the **[DOX framework](https://github.com/agent0ai/dox)** to document its codebase for AI agents. Every code folder contains an `AGENTS.md` file that serves as a binding work contract for its subtree, describing purpose, ownership, local contracts, work guidance, and verification rules.
+
+| Folder | DOX Contract |
+|--------|-------------|
+| `scripts/` | Installer scripts & security rules |
+| `frontend/` | React 19 + TypeScript UI conventions |
+| `backend/` | FastAPI REST API & WebSocket standards |
+| `docker/` | Docker & Compose deployment rules |
+| `docs/` | User & developer documentation |
+
+> 💡 **TL;DR:** DOX ensures every AI agent working on this project follows the same rules and standards.
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to:
