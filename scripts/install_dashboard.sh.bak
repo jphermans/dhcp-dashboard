@@ -682,28 +682,12 @@ if [ "$TEST_MODE" -eq 1 ]; then
     echo -e "  ${INFO} [DRY RUN] Would execute step 2"
     step_skip
 else
-DEPS="python3 python3-venv python3-pip python3-pip-whl python3-setuptools-whl git curl nginx openssl"
-$SUDO apt-get install -y $DEPS &>/dev/null &
-APT_PID=$!
-spinner $APT_PID "Installing system packages"
-wait $APT_PID
-APT_EXIT=$?
-if [ $APT_EXIT -ne 0 ]; then
-    echo -e "  ${CROSS} apt-get install failed (exit code $APT_EXIT)"
-    step_fail
-    exit 1
-fi
+DEPS="python3 python3-venv python3-pip git curl nginx openssl"
+apt-get install -y $DEPS &>/dev/null &
+spinner $! "Installing system packages"
 # Verify key binaries
 if ! command -v python3 &>/dev/null; then
-    echo -e "  ${CROSS} python3 not found after install"
     step_fail
-    exit 1
-fi
-# Verify python3-venv is actually installed
-if ! python3 -m venv --help &>/dev/null; then
-    echo -e "  ${CROSS} python3-venv package installed but venv module not functional (try: apt-get install --reinstall python3-venv)"
-    step_fail
-    exit 1
 fi
 fi
 step_ok
@@ -748,10 +732,10 @@ if [ ! -d "$INSTALL_DIR/backend" ]; then
     # Copy from current directory (assumes script is in project root)
     SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &>/dev/null && pwd )"
     PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-    $SUDO cp -r "$PROJECT_ROOT/backend" "$INSTALL_DIR/" || { echo -e "  ${CROSS} Failed to copy backend files"; step_fail; exit 1; }
+    cp -r "$PROJECT_ROOT/backend" "$INSTALL_DIR/"
 fi
 # Create .env file interactively
-cat <<EOF | $SUDO tee "$INSTALL_DIR/backend/.env" > /dev/null || { echo -e "  ${CROSS} Failed to create .env file"; step_fail; exit 1; }
+cat <<EOF | $SUDO tee "$INSTALL_DIR/backend/.env" > /dev/null
 # DHCH Dashboard Backend Configuration
 DATABASE_URL=sqlite:///$DATA_DIR/dhcp_dashboard.db
 SECRET_KEY=$SECRET_KEY
@@ -765,14 +749,6 @@ FRONTEND_URL=http://$SERVER_IP
 ENVIRONMENT=production
 EOF
 $SUDO chmod 600 "$INSTALL_DIR/backend/.env"
-# Give ownership to the user so venv creation works in step 6
-CHOWN_ERR=$( $SUDO chown -R $USER:$USER "$INSTALL_DIR/backend" 2>&1 )
-if [ $? -ne 0 ]; then
-    echo -e "  ${CROSS} Failed to change ownership of backend directory"
-    echo -e "  ${GRAY}$CHOWN_ERR${NC}"
-    step_fail
-    exit 1
-fi
 step_ok
 fi
 
@@ -783,45 +759,15 @@ if [ "$TEST_MODE" -eq 1 ]; then
     step_skip
 else
 if [ ! -d "$VENV_DIR" ]; then
-    # Capture stderr for diagnosis
-    VENV_ERR="$(python3 -m venv "$VENV_DIR" 2>&1 >/dev/null)"
-    if [ ! -f "$VENV_DIR/bin/pip" ]; then
-        echo -e "  ${CROSS} Failed to create virtual environment"
-        echo -e "  ${GRAY}Error details:${NC}"
-        echo "$VENV_ERR" | head -10 | while IFS= read -r line; do
-            echo -e "  ${GRAY}  $line${NC}"
-        done
-        # Provide a hint if we recognize common issues
-        if echo "$VENV_ERR" | grep -iq "ensurepip"; then
-            echo -e "  ${YELLOW}Hint: Try 'sudo apt-get install --reinstall python3-venv python3-pip-whl'${NC}"
-        fi
-        step_fail
-        exit 1
-    fi
+    python3 -m venv "$VENV_DIR" &>/dev/null
 fi
 # Activate and install
-if [ ! -f "$VENV_DIR/bin/pip" ]; then
-    echo -e "  ${CROSS} Virtual environment pip not found"
-    step_fail
-    exit 1
-fi
 "$VENV_DIR/bin/pip" install --upgrade pip &>/dev/null &
-PIPUPG_PID=$!
-spinner $PIPUPG_PID "Upgrading pip"
-wait $PIPUPG_PID
-if [ $? -ne 0 ]; then
-    echo -e "  ${CROSS} Failed to upgrade pip"
-    step_fail
-    exit 1
-fi
+spinner $! "Upgrading pip"
 "$VENV_DIR/bin/pip" install -r "$INSTALL_DIR/backend/requirements.txt" &>/dev/null &
-PIPINST_PID=$!
-spinner $PIPINST_PID "Installing Python packages"
-wait $PIPINST_PID
-if [ $? -ne 0 ]; then
-    echo -e "  ${CROSS} Failed to install Python packages"
+spinner $! "Installing Python packages"
+if ! "$VENV_DIR/bin/pip" freeze | grep -q fastapi; then
     step_fail
-    exit 1
 fi
 fi
 step_ok
