@@ -203,7 +203,7 @@ else
         if validate_ip "$DHCP_END"; then break; else echo -e "${RED}Invalid IP format.${NC}"; fi
     done
 
-    read -rp "Local domain name [mylocal.loc]: " LOCAL_DOMAIN
+    read -rp "Local domain name (e.g., myhome.local) [mylocal.loc]: " LOCAL_DOMAIN
     LOCAL_DOMAIN=${LOCAL_DOMAIN:-mylocal.loc}
 
     while true; do
