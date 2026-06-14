@@ -7,13 +7,13 @@
 </p>
 
 <p align="center">
-  <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.12%2B-blue?logo=python&logoColor=white" alt="Python" /></a>
-  <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi" alt="FastAPI" /></a>
-  <a href="https://react.dev"><img src="https://img.shields.io/badge/React-19-61DAFB?logo=react" alt="React" /></a>
-  <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white" alt="TypeScript" /></a>
-  <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/Tailwind-v4-38B2AC?logo=tailwind-css&logoColor=white" alt="Tailwind CSS" /></a>
-  <a href="https://www.raspberrypi.com"><img src="https://img.shields.io/badge/Raspberry%20Pi-4/5-red?logo=raspberry-pi" alt="Raspberry Pi" /></a>
-  <a href="https://www.agent-zero.ai"><img src="https://img.shields.io/badge/Built%20with-Agent%20Zero-8A2BE2?logo=robot&logoColor=white" alt="Agent Zero" /></a>
+  <a href="https://python.org" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Python-3.12%2B-blue?logo=python&logoColor=white" alt="Python" /></a>
+  <a href="https://fastapi.tiangolo.com" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi" alt="FastAPI" /></a>
+  <a href="https://react.dev" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/React-19-61DAFB?logo=react" alt="React" /></a>
+  <a href="https://www.typescriptlang.org" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://tailwindcss.com" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Tailwind-v4-38B2AC?logo=tailwind-css&logoColor=white" alt="Tailwind CSS" /></a>
+  <a href="https://www.raspberrypi.com" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Raspberry%20Pi-4/5-red?logo=raspberry-pi" alt="Raspberry Pi" /></a>
+  <a href="https://www.agent-zero.ai" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Built%20with-Agent%20Zero-8A2BE2?logo=robot&logoColor=white" alt="Agent Zero" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="License" /></a>
 </p>
 
@@ -147,7 +147,7 @@ Before installing the dashboard, you need a Raspberry Pi running **Raspberry Pi 
 
 Raspberry Pi Imager is the official, easiest way to write the OS — no command line needed.
 
-1. **Download Raspberry Pi Imager** from [raspberrypi.com/software](https://www.raspberrypi.com/software/) (Windows, macOS, Linux).
+1. **Download Raspberry Pi Imager** from <a href="https://www.raspberrypi.com/software/" target="_blank" rel="noopener noreferrer">raspberrypi.com/software</a> (Windows, macOS, Linux).
 2. **Insert** your microSD card into your computer (use a USB card reader if needed).
 3. **Open Raspberry Pi Imager** and:
    - **Choose Device**: Select your Pi model (e.g., Raspberry Pi 4, Pi 5).
@@ -163,8 +163,8 @@ Raspberry Pi Imager is the official, easiest way to write the OS — no command 
 
 ### 🟡 Alternative: balenaEtcher
 
-[balenaEtcher](https://www.balena.io/etcher/) is another simple GUI tool:
-1. **Download** the Raspberry Pi OS `.img.xz` file from [raspberrypi.com/software/operating-systems](https://www.raspberrypi.com/software/operating-systems/).
+<a href="https://www.balena.io/etcher/" target="_blank" rel="noopener noreferrer">balenaEtcher</a> is another simple GUI tool:
+1. **Download** the Raspberry Pi OS `.img.xz` file from <a href="https://www.raspberrypi.com/software/operating-systems/" target="_blank" rel="noopener noreferrer">raspberrypi.com/software/operating-systems</a>.
 2. **Flash** the image with Etcher. It verifies automatically.
 3. For headless setup, create a file named `ssh` (no extension) on the `boot` partition and a `wpa_supplicant.conf` (instructions below).
 
@@ -385,7 +385,7 @@ The interactive installer asks for network settings (IP, CIDR, gateway, DHCP ran
 
 ## 📚 DOX Documentation
 
-This project uses the **[DOX framework](https://github.com/agent0ai/dox)** to document its codebase for AI agents. Every code folder contains an `AGENTS.md` file that serves as a binding work contract for its subtree, describing purpose, ownership, local contracts, work guidance, and verification rules.
+This project uses the **<a href="https://github.com/agent0ai/dox" target="_blank" rel="noopener noreferrer">DOX framework</a>** to document its codebase for AI agents. Every code folder contains an `AGENTS.md` file that serves as a binding work contract for its subtree, describing purpose, ownership, local contracts, work guidance, and verification rules.
 
 | Folder | DOX Contract |
 |--------|-------------|
@@ -411,10 +411,10 @@ Contributions are welcome! Feel free to:
 
 ## 👥 Contributors
 
-- **[Jean-Pierre Hermans](https://github.com/jphermans)** — Author & Lead Developer
-- **[Agent Zero](https://www.agent-zero.ai)** ([GitHub](https://github.com/agent0ai/agent-zero)) — AI Development Partner
+- **<a href="https://github.com/jphermans" target="_blank" rel="noopener noreferrer">Jean-Pierre Hermans</a>** — Author & Lead Developer
+- **<a href="https://www.agent-zero.ai" target="_blank" rel="noopener noreferrer">Agent Zero</a>** (<a href="https://github.com/agent0ai/agent-zero" target="_blank" rel="noopener noreferrer">GitHub</a>) — AI Development Partner
 
-This project was built with **[Agent Zero](https://www.agent-zero.ai)**, an autonomous AI agent that helped architect, develop, and test the codebase.
+This project was built with **<a href="https://www.agent-zero.ai" target="_blank" rel="noopener noreferrer">Agent Zero</a>**, an autonomous AI agent that helped architect, develop, and test the codebase.
 
 ---
 
