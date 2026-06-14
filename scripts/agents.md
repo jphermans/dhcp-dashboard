@@ -16,6 +16,7 @@ Owned by the root AGENTS.md. All scripts must comply with project-wide standards
 ## Work Guidance
 - Keep scripts self-contained with clear usage messages and `--help` support.
 - Use the `dashboardctl.sh` for service lifecycle management (start/stop/status) of the dashboard backend and Nginx.
+- Use `db_init.sh` as a standalone database initializer when the main install script's step 7 fails or needs to be run independently. It is idempotent and handles async SQLAlchemy correctly.
 - When adding a new script, document it here and in the root README if user-facing.
 
 ### Install Script Security Rules
