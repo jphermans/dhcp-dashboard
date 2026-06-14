@@ -132,6 +132,85 @@ The frontend automatically proxies API calls to the backend on port 8000.
 
 ---
 
+## 🖥️ Prepare the Raspberry Pi
+
+Before installing the dashboard, you need a Raspberry Pi running **Raspberry Pi OS (64‑bit)** (formerly Raspbian). Choose the method that fits your comfort level:
+
+### 🟢 Beginner: Raspberry Pi Imager *(recommended)*
+
+Raspberry Pi Imager is the official, easiest way to write the OS — no command line needed.
+
+1. **Download Raspberry Pi Imager** from [raspberrypi.com/software](https://www.raspberrypi.com/software/) (Windows, macOS, Linux).
+2. **Insert** your microSD card into your computer (use a USB card reader if needed).
+3. **Open Raspberry Pi Imager** and:
+   - **Choose Device**: Select your Pi model (e.g., Raspberry Pi 4, Pi 5).
+   - **Choose OS**: Pick **Raspberry Pi OS (64‑bit)** — the **Lite** version is best for a headless server (no desktop).
+   - **Choose Storage**: Select your microSD card.
+4. **Click** ⚙️ (gear icon) to pre‑configure:
+   - ☑ **Set hostname**: e.g., `dhcpdashboard.local`
+   - ☑ **Enable SSH** (use password or public key)
+   - ☑ **Configure wireless LAN** (SSID + password)
+   - ☑ **Set username and password** (default `pi`/`raspberry` is insecure)
+5. **Click WRITE** — the tool downloads the image, writes it, and verifies it automatically.
+6. **Insert** the card into your Pi, connect power, and wait 1–2 minutes for the first boot.
+
+### 🟡 Alternative: balenaEtcher
+
+[balenaEtcher](https://www.balena.io/etcher/) is another simple GUI tool:
+1. **Download** the Raspberry Pi OS `.img.xz` file from [raspberrypi.com/software/operating-systems](https://www.raspberrypi.com/software/operating-systems/).
+2. **Flash** the image with Etcher. It verifies automatically.
+3. For headless setup, create a file named `ssh` (no extension) on the `boot` partition and a `wpa_supplicant.conf` (instructions below).
+
+### 🔴 Advanced: Command Line (`dd`)
+
+If you prefer the terminal:
+
+```bash
+# 1. Download latest Raspberry Pi OS Lite 64-bit
+wget https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-11-19/2024-11-19-raspios-bookworm-arm64-lite.img.xz
+
+# 2. Identify your SD card (e.g., /dev/sdb) — WARNING: double‑check or you'll nuke your drive!
+lsblk
+
+# 3. Write the image (replace /dev/sdX with YOUR device)
+xzcat 2024-11-19-raspios-bookworm-arm64-lite.img.xz | sudo dd of=/dev/sdX bs=4M status=progress
+sync
+```
+
+> ⚠️ **Critical**: Replace `/dev/sdX` with your actual SD card device (e.g., `/dev/sdb`, `/dev/mmcblk0`). Using the wrong device **will destroy all data on that drive**. Double‑check with `lsblk`.
+
+### Headless Setup (No Monitor / Keyboard)
+
+If you're running the Pi without a display:
+
+- **Enable SSH**: After writing the image, mount the `boot` partition and create an empty file named `ssh` (no extension):
+  ```bash
+  touch /media/$USER/boot/ssh
+  ```
+- **Configure Wi‑Fi**: While the `boot` partition is still mounted, create `wpa_supplicant.conf`:
+  ```bash
+  cat > /media/$USER/boot/wpa_supplicant.conf << 'EOF'
+  country=US
+  ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+  update_config=1
+  
+  network={
+      ssid="YourWiFiSSID"
+      psk="YourWiFiPassword"
+  }
+  EOF
+  ```
+  The OS will copy these files and connect automatically on first boot.
+
+Once the Pi boots, find its IP (`ping dhcpdashboard.local` or check your router's DHCP table) and **SSH in**:
+```bash
+ssh <username>@<pi-ip-address>
+```
+
+Now you're ready to install the dashboard! 👇
+
+---
+
 ## 📦 Full Raspberry Pi Installation
 
 Designed for **Raspberry Pi 4/5** (and any Debian‑based system).

@@ -171,6 +171,156 @@ validate_port() {
     [[ $port =~ ^[0-9]+$ ]] && ((port >= 1 && port <= 65535))
 }
 
+# ─── Wi-Fi Configuration ─────────────────────────────────────────────────────
+configure_wifi() {
+    # Detect wireless interfaces
+    local wlan_iface=""
+    if command -v iw &>/dev/null; then
+        wlan_iface=$(iw dev 2>/dev/null | awk '/Interface/{print $2}' | head -1)
+    fi
+    if [ -z "$wlan_iface" ] && command -v iwconfig &>/dev/null; then
+        wlan_iface=$(iwconfig 2>/dev/null | grep -o '^[a-z0-9]*' | head -1)
+    fi
+    if [ -z "$wlan_iface" ]; then
+        wlan_iface=$(ls /sys/class/net/ 2>/dev/null | grep -E '^wl' | head -1)
+    fi
+
+    if [ -z "$wlan_iface" ]; then
+        echo -e "  ${GRAY}No wireless interface detected — skipping Wi-Fi setup.${NC}"
+        return 0
+    fi
+
+    echo -e "  ${CHK} Wireless interface: ${GREEN}${wlan_iface}${NC}"
+
+    # Ask if user wants to configure Wi-Fi
+    if [ "$TEST_MODE" -eq 1 ]; then
+        echo -e "  ${INFO} [DRY RUN] Would ask to configure Wi-Fi"
+        return 0
+    fi
+
+    printf "\n  ${BOLD}${LCYAN}  ➤${NC} ${WHITE}Configure Wi-Fi on ${wlan_iface}?${NC} ${GRAY}[y/N]${NC}: "
+    read -r CONFIG_WIFI
+    if [[ ! "$CONFIG_WIFI" =~ ^[Yy]$ ]]; then
+        echo -e "  ${GRAY}Skipping Wi-Fi configuration.${NC}"
+        return 0
+    fi
+
+    # Scan for SSIDs
+    echo ""
+    echo -e "  ${LCYAN}Scanning for Wi-Fi networks...${NC}"
+    local scan_file="/tmp/wifi_scan_$$.txt"
+    if command -v nmcli &>/dev/null; then
+        nmcli -t -f SSID dev wifi list ifname "$wlan_iface" 2>/dev/null | grep -v '^$' | sort -u > "$scan_file"
+    elif $SUDO iwlist "$wlan_iface" scan 2>/dev/null | grep 'ESSID:' | sed 's/.*ESSID:"//;s/"$//' | grep -v '^$' | sort -u > "$scan_file"; then
+        true
+    else
+        echo -e "  ${CROSS} Failed to scan for networks. Check that ${wlan_iface} is up."
+        return 1
+    fi
+
+    local ssid_count=$(wc -l < "$scan_file")
+    if [ "$ssid_count" -eq 0 ]; then
+        echo -e "  ${WARN} No networks found."
+        rm -f "$scan_file"
+        return 1
+    fi
+
+    # Display numbered list
+    echo -e "\n  ${WHITE}Available networks:${NC}"
+    local i=1
+    while IFS= read -r ssid; do
+        printf "  ${LCYAN}%2d)${NC} %s\n" "$i" "$ssid"
+        ((i++))
+    done < "$scan_file"
+
+    # Pick network
+    echo ""
+    while true; do
+        printf "  ${BOLD}${LCYAN}  ➤${NC} ${WHITE}Select network${NC} ${GRAY}[1-${ssid_count}]${NC}: "
+        read -r SSID_NUM
+        if [[ "$SSID_NUM" =~ ^[0-9]+$ ]] && [ "$SSID_NUM" -ge 1 ] && [ "$SSID_NUM" -le "$ssid_count" ]; then
+            SELECTED_SSID=$(sed -n "${SSID_NUM}p" "$scan_file")
+            break
+        fi
+        echo -e "  ${CROSS} ${LRED}Invalid selection. Choose 1-${ssid_count}.${NC}"
+    done
+    rm -f "$scan_file"
+
+    echo -e "  ${CHK} Selected: ${GREEN}${SELECTED_SSID}${NC}"
+
+    # Get password
+    printf "  ${BOLD}${LCYAN}  ➤${NC} ${WHITE}Wi-Fi password for '${SELECTED_SSID}'${NC}: "
+    read -s WIFI_PASS
+    echo ""
+    while [ -z "$WIFI_PASS" ]; do
+        echo -e "  ${CROSS} ${LRED}Password cannot be empty.${NC}"
+        printf "  ${BOLD}${LCYAN}  ➤${NC} ${WHITE}Wi-Fi password${NC}: "
+        read -s WIFI_PASS
+        echo ""
+    done
+
+    # Write wpa_supplicant.conf
+    echo -e "  ${INFO} Writing Wi-Fi configuration..."
+    $SUDO tee /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null << WPAEOF
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=US
+
+network={
+    ssid="${SELECTED_SSID}"
+    psk="${WIFI_PASS}"
+}
+WPAEOF
+    echo -e "  ${CHK} Wi-Fi credentials written to /etc/wpa_supplicant/wpa_supplicant.conf"
+
+    # Ask about static IP
+    echo ""
+    printf "  ${BOLD}${LCYAN}  ➤${NC} ${WHITE}Set static IP address for ${wlan_iface}?${NC} ${GRAY}[y/N]${NC}: "
+    read -r SET_STATIC
+    if [[ "$SET_STATIC" =~ ^[Yy]$ ]]; then
+        # Get current IP info as defaults
+        local current_ip=$(ip -4 addr show "$wlan_iface" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1)
+        local current_netmask=$(ip -4 addr show "$wlan_iface" 2>/dev/null | grep -oP '(?<=/)\d+' | head -1)
+        current_netmask="${current_netmask:-24}"
+        local current_gateway=$(ip route show default 2>/dev/null | awk '{print $3}' | head -1)
+        local current_dns="8.8.8.8"
+
+        echo -e "  ${GRAY}Press Enter to accept defaults (detected values).${NC}\n"
+
+        printf "  ${BOLD}${LCYAN}  ➤${NC} ${WHITE}Static IP address${NC} ${GRAY}[${current_ip}]${NC}: "
+        read -r STATIC_IP
+        STATIC_IP="${STATIC_IP:-${current_ip}}"
+
+        printf "  ${BOLD}${LCYAN}  ➤${NC} ${WHITE}Netmask (CIDR)${NC} ${GRAY}[${current_netmask}]${NC}: "
+        read -r STATIC_NETMASK
+        STATIC_NETMASK="${STATIC_NETMASK:-${current_netmask}}"
+
+        printf "  ${BOLD}${LCYAN}  ➤${NC} ${WHITE}Gateway${NC} ${GRAY}[${current_gateway}]${NC}: "
+        read -r STATIC_GATEWAY
+        STATIC_GATEWAY="${STATIC_GATEWAY:-${current_gateway}}"
+
+        printf "  ${BOLD}${LCYAN}  ➤${NC} ${WHITE}DNS server${NC} ${GRAY}[${current_dns}]${NC}: "
+        read -r STATIC_DNS
+        STATIC_DNS="${STATIC_DNS:-${current_dns}}"
+
+        # Append static config to dhcpcd.conf
+        echo -e "  ${INFO} Writing static IP configuration to /etc/dhcpcd.conf..."
+        $SUDO tee -a /etc/dhcpcd.conf > /dev/null << DHCPEOF
+
+# Static IP configuration for ${wlan_iface}
+interface ${wlan_iface}
+static ip_address=${STATIC_IP}/${STATIC_NETMASK}
+static routers=${STATIC_GATEWAY}
+static domain_name_servers=${STATIC_DNS}
+DHCPEOF
+        echo -e "  ${CHK} Static IP configuration added to /etc/dhcpcd.conf"
+    else
+        echo -e "  ${GRAY}Using DHCP for ${wlan_iface}.${NC}"
+    fi
+
+    return 0
+}
+
 # ─── Trap for Clean Exit ────────────────────────────────────────────────────
 trap_cleanup() {
     echo -e "\n\n${YELLOW}${WARN}  Script interrupted by user.${NC}"
@@ -179,8 +329,16 @@ trap_cleanup() {
 }
 trap trap_cleanup INT TERM
 
+# ─── Argument Pre‑pass (must run before root check so --test bypasses it) ───
+TEST_MODE=0
+for arg in "$@"; do
+    case "$arg" in
+        --test|-t) TEST_MODE=1 ;;
+    esac
+done
+
 # ─── Root Check ──────────────────────────────────────────────────────────────
-if [ "$EUID" -eq 0 ]; then
+if [ "$TEST_MODE" -ne 1 ] && [ "$EUID" -eq 0 ]; then
     hr "━"
     echo -e "${RED}┌─ ${CROSS}  ERROR: ROOT USER DETECTED ${RED}─────────────────────────────────────┐${NC}"
     echo -e "${RED}│${NC}"
@@ -210,11 +368,39 @@ fi
 # ── SUDO wrapper for non-root execution ──────────────────────
 SUDO="sudo"
 
+
+TEST_MODE=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --test|-t)
+            TEST_MODE=1
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [--test|-t] [--help|-h]"
+            echo "  --test, -t    Dry-run mode: simulate steps without installing"
+            echo "  --help, -h    Show this help"
+            exit 0
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
 # ╔══════════════════════════════════════════════════════════════════════════════╗
 # ║                          WELCOME SCREEN                                      ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 
 clear
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo ""
+    echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${YELLOW}║${NC}${BOLD}${YELLOW}  ⚠  TEST MODE ACTIVE — No changes will be made to your system.  ⚠        ${NC}${YELLOW}║${NC}"
+    echo -e "${YELLOW}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+fi
+
 
 # Fancy header
 printf "${LBLUE}╔" ; printf '═%.0s' $(seq 1 $((TERM_WIDTH - 2))) ; printf "╗${NC}\n"
@@ -319,12 +505,23 @@ echo -e "  ${CHK} Disk space: ${GREEN}${AVAIL}M available${NC}"
 
 echo ""
 
+# ─── Wi-Fi Configuration ───────────────────────────────────────────────────
+configure_wifi
+
 # ╔══════════════════════════════════════════════════════════════════════════════╗
 # ║                          CONFIGURATION QUESTIONS                            ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 
 title_box "CONFIGURATION"
 
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Using default configuration values"
+    ADMIN_USER="admin"
+    ADMIN_PASS="admin123"
+    BACKEND_PORT=8000
+    SERVER_IP="localhost"
+    SECRET_KEY="testsecretkey1234567890abcdef"
+else
 echo -e "${GRAY}Please provide the configuration details below.${NC}"
 echo -e "${GRAY}Press Enter to accept default values (shown in brackets).${NC}\n"
 
@@ -385,6 +582,8 @@ SERVER_IP="${SERVER_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
 
 # --- Secret Key (auto-generate) ---
 SECRET_KEY=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | sha256sum | cut -d' ' -f1 2>/dev/null || echo "supersecret")
+fi
+
 
 echo ""
 hr
@@ -421,14 +620,23 @@ STATIC_DIR="/var/www/dhcpdashboard"
 
 # ─── Step 1: System Package Update ────────────────────────────────────────
 step_start "1" "Updating system packages"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 1"
+    step_skip
+else
 $SUDO apt-get update -qq &>/dev/null &
 spinner $! "Updating package lists"
 $SUDO apt-get upgrade -y -qq &>/dev/null &
 spinner $! "Upgrading packages"
 step_ok
+fi
 
 # ─── Step 2: Install Required Packages ────────────────────────────────────
 step_start "2" "Installing system dependencies (python3, nginx, git, curl)"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 2"
+    step_skip
+else
 DEPS="python3 python3-venv python3-pip git curl nginx openssl"
 apt-get install -y $DEPS &>/dev/null &
 spinner $! "Installing system packages"
@@ -436,11 +644,15 @@ spinner $! "Installing system packages"
 if ! command -v python3 &>/dev/null; then
     step_fail
 fi
+fi
 step_ok
 
 # ─── Step 3: Install Node.js (NodeSource Node 20 LTS) ─────────────────────
 step_start "3" "Installing Node.js 20.x LTS"
-if command -v node &>/dev/null; then
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 3"
+    step_skip
+elif command -v node &>/dev/null; then
     NODE_VERSION=$(node -v)
     echo -e "\n  ${CHK} Node.js already installed: ${GREEN}${NODE_VERSION}${NC}"
     step_skip
@@ -457,11 +669,20 @@ fi
 
 # ─── Step 4: Create directories ───────────────────────────────────────────
 step_start "4" "Creating application directories"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 4"
+    step_skip
+else
 $SUDO mkdir -p "$INSTALL_DIR" "$DATA_DIR" "$STATIC_DIR"
 step_ok
+fi
 
 # ─── Step 5: Copy backend code ────────────────────────────────────────────
 step_start "5" "Setting up backend application"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 5"
+    step_skip
+else
 if [ ! -d "$INSTALL_DIR/backend" ]; then
     # Copy from current directory (assumes script is in project root)
     SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &>/dev/null && pwd )"
@@ -484,9 +705,14 @@ ENVIRONMENT=production
 EOF
 chmod 600 "$INSTALL_DIR/backend/.env"
 step_ok
+fi
 
 # ─── Step 6: Create Python virtual environment and install dependencies ───
 step_start "6" "Installing Python dependencies (virtualenv)"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 6"
+    step_skip
+else
 if [ ! -d "$VENV_DIR" ]; then
     python3 -m venv "$VENV_DIR" &>/dev/null
 fi
@@ -498,10 +724,15 @@ spinner $! "Installing Python packages"
 if ! "$VENV_DIR/bin/pip" freeze | grep -q fastapi; then
     step_fail
 fi
+fi
 step_ok
 
 # ─── Step 7: Initialize database ──────────────────────────────────────────
 step_start "7" "Initializing database and admin user"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 7"
+    step_skip
+else
 export DATABASE_URL="sqlite:///$DATA_DIR/dhcp_dashboard.db"
 export SECRET_KEY="$SECRET_KEY"
 "$VENV_DIR/bin/python" -c "
@@ -539,10 +770,15 @@ finally:
 if [ $? -ne 0 ]; then
     step_fail
 fi
+fi
 step_ok
 
 # ─── Step 8: Build Frontend (production) ──────────────────────────────────
 step_start "8" "Building frontend (React production build)"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 8"
+    step_skip
+else
 FRONTEND_SRC="$INSTALL_DIR/frontend"
 if [ ! -d "$FRONTEND_SRC" ]; then
     SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &>/dev/null && pwd )"
@@ -571,6 +807,7 @@ spinner $! "Building frontend"
 if [ ! -d "$FRONTEND_SRC/dist" ]; then
     step_fail
 fi
+fi
 # Move built files to static directory
 rm -rf "$STATIC_DIR/*" 2>/dev/null
 cp -r "$FRONTEND_SRC/dist/"* "$STATIC_DIR/"
@@ -579,6 +816,10 @@ step_ok
 
 # ─── Step 9: Configure Nginx ──────────────────────────────────────────────
 step_start "9" "Configuring Nginx web server"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 9"
+    step_skip
+else
 
 cat > /etc/nginx/sites-available/dhcpdashboard <<EOF
 server {
@@ -640,9 +881,14 @@ if [ $? -ne 0 ]; then
 else
     step_ok
 fi
+fi
 
 # ─── Step 10: Create systemd service for backend ──────────────────────────
 step_start "10" "Creating systemd service for backend"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 10"
+    step_skip
+else
 
 cat > /etc/systemd/system/dhcpdashboard-backend.service <<EOF
 [Unit]
@@ -666,9 +912,14 @@ EOF
 systemctl daemon-reload &>/dev/null
 systemctl enable dhcpdashboard-backend.service &>/dev/null
 step_ok
+fi
 
 # ─── Step 11: Start services ──────────────────────────────────────────────
 step_start "11" "Starting services"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 11"
+    step_skip
+else
 
 systemctl restart dhcpdashboard-backend.service &>/dev/null
 sleep 2
@@ -689,9 +940,14 @@ else
 fi
 
 step_ok
+fi
 
 # ─── Step 12: Final verification ──────────────────────────────────────────
 step_start "12" "Verifying installation"
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} [DRY RUN] Would execute step 12"
+    step_skip
+else
 
 # Test backend health endpoint
 sleep 2
@@ -709,6 +965,7 @@ else
 fi
 
 step_ok
+fi
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
 # ║                          INSTALLATION COMPLETE                               ║
