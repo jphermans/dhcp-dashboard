@@ -625,12 +625,18 @@ echo -e "  ${GRAY}Backend port:${NC}   ${WHITE}${BACKEND_PORT}${NC}"
 echo -e "  ${GRAY}Server address:${NC} ${WHITE}${SERVER_IP}${NC}"
 echo ""
 
-printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Proceed with installation?${NC} ${GRAY}[Y/n]${NC}: "
-read CONFIRM
-if [[ ! "$CONFIRM" =~ ^[Yy]?$ ]] && [ -n "$CONFIRM" ]; then
-    echo -e "\n${YELLOW}${WARN}  Installation cancelled.${NC}\n"
-    exit 0
-fi
+while true; do
+    printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Proceed with installation?${NC} ${GRAY}[Y/n]${NC}: "
+    read -r CONFIRM
+    if [[ -z "$CONFIRM" ]] || [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
+        break   # proceed
+    elif [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
+        echo -e "\n${YELLOW}${WARN}  Installation cancelled.${NC}\n"
+        exit 0
+    else
+        echo -e "  ${CROSS} ${LRED}Please answer Y (yes) or N (no).${NC}"
+    fi
+done
 
 echo ""
 hr
