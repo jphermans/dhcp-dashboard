@@ -762,7 +762,7 @@ fi
 if [ ! -f "$INSTALL_DIR/backend/.env" ]; then
     cat <<EOF | $SUDO tee "$INSTALL_DIR/backend/.env" > /dev/null || { echo -e "  ${CROSS} Failed to create .env file"; step_fail; exit 1; }
 # DHCH Dashboard Backend Configuration
-DATABASE_URL=sqlite:///$DATA_DIR/dhcp_dashboard.db
+DATABASE_URL=sqlite+aiosqlite:///$DATA_DIR/dhcp_dashboard.db
 SECRET_KEY=$SECRET_KEY
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
@@ -845,7 +845,7 @@ if [ "$TEST_MODE" -eq 1 ]; then
     echo -e "  ${INFO} [DRY RUN] Would execute step 7"
     step_skip
 else
-export DATABASE_URL="sqlite:///$DATA_DIR/dhcp_dashboard.db"
+export DATABASE_URL="sqlite+aiosqlite:///$DATA_DIR/dhcp_dashboard.db"
 export SECRET_KEY="$SECRET_KEY"
 "$VENV_DIR/bin/python" -c "
 import os, sys
@@ -1012,7 +1012,7 @@ Type=simple
 User=www-data
 WorkingDirectory=$INSTALL_DIR/backend
 Environment="PATH=$VENV_DIR/bin:/usr/bin"
-Environment="DATABASE_URL=sqlite:///$DATA_DIR/dhcp_dashboard.db"
+Environment="DATABASE_URL=sqlite+aiosqlite:///$DATA_DIR/dhcp_dashboard.db"
 ExecStart=$VENV_DIR/bin/uvicorn app.main:app --host 127.0.0.1 --port $BACKEND_PORT
 Restart=always
 RestartSec=5
