@@ -259,12 +259,26 @@ configure_wifi() {
         echo ""
     done
 
+    # Ask for country code
+    echo ""
+    while true; do
+        printf "  ${BOLD}${LCYAN}  ➤${NC} ${WHITE}Two-letter country code (e.g., US, DE, GB)${NC} ${GRAY}[US]${NC}: "
+        read -r WIFI_COUNTRY
+        WIFI_COUNTRY="${WIFI_COUNTRY:-US}"
+        WIFI_COUNTRY=$(echo "$WIFI_COUNTRY" | tr '[:lower:]' '[:upper:]')
+        if [[ "$WIFI_COUNTRY" =~ ^[A-Z]{2}$ ]]; then
+            break
+        else
+            echo -e "  ${CROSS} ${LRED}Invalid country code. Use exactly two letters.${NC}"
+        fi
+    done
+
     # Write wpa_supplicant.conf
     echo -e "  ${INFO} Writing Wi-Fi configuration..."
     $SUDO tee /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null << WPAEOF
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
-country=US
+country=${WIFI_COUNTRY}
 
 network={
     ssid="${SELECTED_SSID}"
@@ -358,7 +372,7 @@ if [ "$TEST_MODE" -ne 1 ] && [ "$EUID" -eq 0 ]; then
     echo -e "${RED}│${NC}     ${BOLD}su - dashboard${NC}"
     echo -e "${RED}│${NC}"
     echo -e "${RED}│${NC}  ${CYAN}4.${NC} ${WHITE}Re-run this installer:${NC}"
-    echo -e "${RED}│${NC}     ${BOLD}./install_dashboard.sh${NC}"
+    echo -e "${RED}│${NC}     ${BOLD}curl -sSL https://raw.githubusercontent.com/jphermans/dhcp-dashboard/main/scripts/install_dashboard.sh | bash -s${NC}"
     echo -e "${RED}│${NC}"
     echo -e "${RED}└────────────────────────────────────────────────────────────────────────────┘${NC}"
     hr "━"
