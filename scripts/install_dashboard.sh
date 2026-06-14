@@ -398,6 +398,14 @@ fi
 SUDO="sudo"
 
 
+# ── Pre-validate sudo credentials ───────────────────────────
+echo -e "${GRAY}Verifying sudo access...${NC}"
+if ! sudo -v; then
+    echo -e "${RED}${CROSS}  Sudo authentication failed. Please run with a user that has sudo privileges.${NC}"
+    exit 1
+fi
+echo -e "  ${CHK} Sudo credentials cached.${NC}"
+
 TEST_MODE=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -515,8 +523,10 @@ else
     LOW_RAM=0
 fi
 
-# Check internet connectivity
-if ping -c 1 -W 2 8.8.8.8 &>/dev/null; then
+# Check internet connectivity (skip in test mode)
+if [ "$TEST_MODE" -eq 1 ]; then
+    echo -e "  ${INFO} Internet check skipped (test mode)${NC}"
+elif ping -c 1 -W 2 8.8.8.8 &>/dev/null; then
     echo -e "  ${CHK} Internet connection: ${GREEN}OK${NC}"
 else
     echo -e "  ${CROSS} No internet connection detected — script will likely fail"
@@ -559,13 +569,13 @@ echo ""
 
 # --- Admin Username ---
 printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Admin username${NC} ${GRAY}[admin]${NC}: "
-read ADMIN_USER
+read -r ADMIN_USER </dev/tty
 ADMIN_USER="${ADMIN_USER:-admin}"
 
 # --- Admin Password (masked) ---
 while true; do
     printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Admin password${NC} ${GRAY}[default: admin123]${NC}: "
-    read -s ADMIN_PASS
+    read -rs ADMIN_PASS </dev/tty
     echo ""
     if [ -z "$ADMIN_PASS" ]; then
         # No password given → use default
@@ -579,7 +589,7 @@ while true; do
 
     # Confirm password
     printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Confirm password${NC}: "
-    read -s ADMIN_PASS_CONFIRM
+    read -rs ADMIN_PASS_CONFIRM </dev/tty
     echo ""
     if [ -z "$ADMIN_PASS_CONFIRM" ]; then
         # No confirmation entered → fall back to default
@@ -596,7 +606,7 @@ done
 # --- Backend Port ---
 while true; do
     printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Backend API port${NC} ${GRAY}[8000]${NC}: "
-    read BACKEND_PORT
+    read -r BACKEND_PORT </dev/tty
     BACKEND_PORT="${BACKEND_PORT:-8000}"
     if validate_port "$BACKEND_PORT"; then
         break
@@ -606,7 +616,7 @@ done
 
 # --- Server IP/Domain ---
 printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Server IP or domain name${NC} ${GRAY}[$(hostname -I 2>/dev/null | awk '{print $1}')]${NC}: "
-read SERVER_IP
+read -r SERVER_IP </dev/tty
 SERVER_IP="${SERVER_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
 
 # --- Secret Key (auto-generate) ---
@@ -627,7 +637,7 @@ echo ""
 
 while true; do
     printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Proceed with installation?${NC} ${GRAY}[Y/n]${NC}: "
-    read -r CONFIRM
+    read -r CONFIRM </dev/tty
     if [[ -z "$CONFIRM" ]] || [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
         break   # proceed
     elif [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
@@ -722,10 +732,10 @@ if [ ! -d "$INSTALL_DIR/backend" ]; then
     # Copy from current directory (assumes script is in project root)
     SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &>/dev/null && pwd )"
     PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-    cp -r "$PROJECT_ROOT/backend" "$INSTALL_DIR/"
+    $SUDO cp -r "$PROJECT_ROOT/backend" "$INSTALL_DIR/"
 fi
 # Create .env file interactively
-cat > "$INSTALL_DIR/backend/.env" <<EOF
+cat <<EOF | $SUDO tee "$INSTALL_DIR/backend/.env" > /dev/null
 # DHCH Dashboard Backend Configuration
 DATABASE_URL=sqlite:///$DATA_DIR/dhcp_dashboard.db
 SECRET_KEY=$SECRET_KEY
@@ -738,7 +748,7 @@ BACKEND_PORT=$BACKEND_PORT
 FRONTEND_URL=http://$SERVER_IP
 ENVIRONMENT=production
 EOF
-chmod 600 "$INSTALL_DIR/backend/.env"
+$SUDO chmod 600 "$INSTALL_DIR/backend/.env"
 step_ok
 fi
 
