@@ -74,6 +74,10 @@
 - Every action is logged: logins, config changes, DHCP/DNS modifications, security events
 - Filterable log viewer with **CSV export**
 
+## 🗺️ Architecture
+
+![Architecture Diagram](assets/architecture.svg)
+
 ### 🔒 Security
 
 - JWT authentication + secure session management
@@ -340,7 +344,7 @@ dhcp-dashboard/
 
 ## 📡 Standalone DHCP & DNS Server
 
-Additionally, the project includes a **separate installer** for setting up a **standalone DHCP & DNS server** (powered by `dnsmasq`) on your Raspberry Pi — ideal when your router (e.g., TP‑Link ER605) acts only as a gateway and does not provide DHCP.
+Additionally, the project includes a **separate installer** for setting up a **standalone DHCP & DNS server** (powered by `dnsmasq`) on your Raspberry Pi — ideal when your router acts only as a gateway and does not provide DHCP.
 
 ### 🧪 Dry‑Run Testing
 
