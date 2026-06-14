@@ -256,6 +256,39 @@ dhcp-dashboard/
 
 ---
 
+## 📡 Standalone DHCP & DNS Server
+
+Additionally, the project includes a **separate installer** for setting up a **standalone DHCP & DNS server** (powered by `dnsmasq`) on your Raspberry Pi — ideal when your router (e.g., TP‑Link ER605) acts only as a gateway and does not provide DHCP.
+
+### 🧪 Dry‑Run Testing
+
+Test the script without making any changes:
+
+```bash
+chmod +x scripts/install_dhcp_dns.sh
+./scripts/install_dhcp_dns.sh --test
+```
+
+This simulates every step with a colorful UI — perfect for verifying the flow in an LXC container before a real installation.
+
+### 🚀 Real Installation
+
+```bash
+sudo ./scripts/install_dhcp_dns.sh
+```
+
+The interactive installer asks for network settings (IP, CIDR, gateway, DHCP range, domain, upstream DNS) and then:
+
+- Installs and configures `dnsmasq`
+- Sets a static IP on the Pi
+- Opens firewall ports
+- Enables the service to start on boot
+
+> ℹ️ For a detailed walkthrough, check the **Obsidian note** inside the vault:
+> `20-Knowledge/Networking/Raspberry Pi DHCP and DNS Setup.md`
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to:
