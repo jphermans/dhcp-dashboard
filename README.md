@@ -411,7 +411,7 @@ Contributions are welcome! Feel free to:
 
 ## 👥 Contributors
 
-- **[Jules Phermans](https://github.com/jphermans)** — Author & Lead Developer
+- **[Jean-Pierre Hermans](https://github.com/jphermans)** — Author & Lead Developer
 - **[Agent Zero](https://agent0.ai)** — AI Development Partner
 
 This project was built with **[Agent Zero](https://agent0.ai)**, an autonomous AI agent that helped architect, develop, and test the codebase.
