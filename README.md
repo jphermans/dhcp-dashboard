@@ -231,6 +231,11 @@ curl -sSL https://raw.githubusercontent.com/jphermans/dhcp-dashboard/main/script
 ```
 
 > **💡 How it works:** The script detects it's running standalone, downloads the full project to a temp directory, and runs itself from there. Your system stays clean — nothing is left in `/tmp` after the install.
+>
+> **🧪 Dry‑run / Test:** Append `--test` to the command to simulate without making changes:
+> ```bash
+> curl -sSL https://raw.githubusercontent.com/jphermans/dhcp-dashboard/main/scripts/install_dashboard.sh | bash -s -- --test
+> ```
 
 
 <div align="center">
