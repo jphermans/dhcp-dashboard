@@ -365,6 +365,21 @@ if [ "$TEST_MODE" -ne 1 ] && [ "$EUID" -eq 0 ]; then
     exit 1
 fi
 
+# ─── Standalone mode: auto-fetch repo if running standalone ───────────────────
+if [ ! -d backend ] || [ ! -d frontend ]; then
+    echo -e "${YELLOW}${WARN}  Running standalone (no repo found). Fetching project...${NC}"
+    TEMP_DIR=$(mktemp -d /tmp/dhcpdashboard.XXXXXX)
+    echo -e "${GRAY}  Downloading repository archive...${NC}"
+    if ! curl -sSL "https://github.com/jphermans/dhcp-dashboard/archive/refs/heads/main.tar.gz" | tar xz -C "$TEMP_DIR" --strip-components=1; then
+        echo -e "${RED}${CROSS}  Failed to download project archive. Check your internet connection.${NC}"
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
+    echo -e "  ${CHK} Project downloaded to $TEMP_DIR"
+    cd "$TEMP_DIR"
+    exec bash "$TEMP_DIR/scripts/install_dashboard.sh" "$@"
+fi
+
 # ── SUDO wrapper for non-root execution ──────────────────────
 SUDO="sudo"
 

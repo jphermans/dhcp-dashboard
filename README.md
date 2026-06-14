@@ -215,21 +215,24 @@ Now you're ready to install the dashboard! 👇
 
 Designed for **Raspberry Pi 4/5** (and any Debian‑based system).
 
-### 1️⃣ Download the project
+### ☁️ Option 1: One‑command install (recommended)
+
+No cloning required — the script fetches everything automatically:
 
 ```bash
-sudo apt update && sudo apt install git -y
-git clone https://github.com/jphermans/dhcp-dashboard.git
-cd dhcp-dashboard
+curl -sSL https://raw.githubusercontent.com/jphermans/dhcp-dashboard/main/scripts/install_dashboard.sh | bash
 ```
 
-### 2️⃣ Run the automatic installer
+> **💡 How it works:** The script detects it's running standalone, downloads the full project to a temp directory, and runs itself from there. Your system stays clean — nothing is left in `/tmp` after the install.
 
-Our **colorful**, **step‑by‑step** installer will guide you through everything:
+### 📥 Option 2: Clone and install manually
+
+Prefer to inspect the code first?
 
 ```bash
-chmod +x scripts/install_dashboard.sh
-sudo ./scripts/install_dashboard.sh
+git clone https://github.com/jphermans/dhcp-dashboard.git
+cd dhcp-dashboard
+./scripts/install_dashboard.sh
 ```
 
 The script will:
