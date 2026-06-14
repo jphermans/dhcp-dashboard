@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.1"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+    </marker>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="500" fill="#f8f9fa" rx="10"/>
+
+  <!-- Title -->
+  <text x="400" y="35" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#333">DHCP/DNS Dashboard — Architecture</text>
+
+  <!-- Raspberry Pi box -->
+  <rect x="310" y="60" width="180" height="50" rx="8" fill="#fff" stroke="#adb5bd" stroke-width="2" filter="url(#shadow)"/>
+  <text x="350" y="88" font-family="Arial" font-size="13" fill="#333">Raspberry Pi 4</text>
+  <text x="345" y="103" font-family="Arial" font-size="10" fill="#6c757d">(or Debian server)</text>
+
+  <!-- Docker Container -->
+  <rect x="310" y="130" width="180" height="50" rx="8" fill="#e3f2fd" stroke="#1e88e5" stroke-width="2" filter="url(#shadow)"/>
+  <text x="328" y="158" font-family="Arial" font-size="13" fill="#1565c0">Docker Container</text>
+  <text x="365" y="173" font-family="Arial" font-size="10" fill="#42a5f5">(compose stack)</text>
+  <line x1="400" y1="110" x2="400" y2="128" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Left: Users -->
+  <rect x="50" y="155" width="100" height="40" rx="20" fill="url(#grad)" />
+  <text x="100" y="179" text-anchor="middle" font-family="Arial" font-size="13" fill="#fff" font-weight="bold">Users</text>
+  <line x1="150" y1="175" x2="308" y2="175" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Nginx -->
+  <rect x="310" y="200" width="180" height="45" rx="8" fill="#fff" stroke="#28a745" stroke-width="2" filter="url(#shadow)"/>
+  <text x="345" y="226" font-family="Arial" font-size="13" fill="#28a745">Nginx (reverse proxy)</text>
+  <line x1="400" y1="180" x2="400" y2="198" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Backend -->
+  <rect x="310" y="265" width="180" height="45" rx="8" fill="#fff" stroke="#ff9800" stroke-width="2" filter="url(#shadow)"/>
+  <text x="335" y="291" font-family="Arial" font-size="13" fill="#e65100">FastAPI Backend</text>
+  <line x1="400" y1="245" x2="400" y2="263" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="405" y="280" font-family="Arial" font-size="9" fill="#6c757d">REST + WS</text>
+
+  <!-- Frontend -->
+  <rect x="50" y="265" width="140" height="45" rx="8" fill="#fff" stroke="#673ab7" stroke-width="2" filter="url(#shadow)"/>
+  <text x="75" y="291" font-family="Arial" font-size="13" fill="#512da8">React Frontend</text>
+  <line x1="190" y1="287" x2="308" y2="287" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Database -->
+  <rect x="50" y="345" width="140" height="40" rx="8" fill="#fff" stroke="#20c997" stroke-width="2" filter="url(#shadow)"/>
+  <text x="63" y="369" font-family="Arial" font-size="12" fill="#20c997">SQLite / PostgreSQL</text>
+  <line x1="120" y1="360" x2="308" y2="360" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- DHCP/DNS services -->
+  <rect x="540" y="265" width="160" height="50" rx="8" fill="#fff" stroke="#dc3545" stroke-width="2" filter="url(#shadow)"/>
+  <text x="555" y="288" font-family="Arial" font-size="13" fill="#c62828">DHCP/DNS Services</text>
+  <text x="555" y="305" font-family="Arial" font-size="10" fill="#6c757d">dnsmasq / Kea / Bind9</text>
+  <line x1="490" y1="287" x2="538" y2="287" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Integration adapters note -->
+  <rect x="540" y="335" width="160" height="35" rx="6" fill="#f8f9fa" stroke="#ced4da" stroke-width="1" stroke-dasharray="4"/>
+  <text x="560" y="355" font-family="Arial" font-size="10" fill="#6c757d">Adapter architecture</text>
+  <text x="555" y="362" font-family="Arial" font-size="9" fill="#adb5bd">for more providers</text>
+</svg>

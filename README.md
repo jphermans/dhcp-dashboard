@@ -13,6 +13,7 @@
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/Tailwind-v4-38B2AC?logo=tailwind-css&logoColor=white" alt="Tailwind CSS" /></a>
   <a href="https://www.raspberrypi.com"><img src="https://img.shields.io/badge/Raspberry%20Pi-4/5-red?logo=raspberry-pi" alt="Raspberry Pi" /></a>
+  <a href="https://agent0.ai"><img src="https://img.shields.io/badge/Built%20with-Agent%20Zero-8A2BE2?logo=robot&logoColor=white" alt="Agent Zero" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="License" /></a>
 </p>
 
@@ -76,7 +77,9 @@
 
 ## 🗺️ Architecture
 
-![Architecture Diagram](assets/architecture.svg)
+<div align="center">
+  <img src="assets/architecture.svg" alt="Architecture Diagram" width="100%" />
+</div>
 
 ### 🔒 Security
 
@@ -228,6 +231,11 @@ curl -sSL https://raw.githubusercontent.com/jphermans/dhcp-dashboard/main/script
 ```
 
 > **💡 How it works:** The script detects it's running standalone, downloads the full project to a temp directory, and runs itself from there. Your system stays clean — nothing is left in `/tmp` after the install.
+
+
+<div align="center">
+  <img src="assets/install-flow.svg" alt="Installation Flow" width="100%" />
+</div>
 
 ### 📥 Option 2: Clone and install manually
 
@@ -398,6 +406,15 @@ Contributions are welcome! Feel free to:
 - Open an **issue** for bugs or feature requests
 - Submit a **pull request** with improvements
 - Share your **screenshots** and **feedback**
+
+---
+
+## 👥 Contributors
+
+- **[Jules Phermans](https://github.com/jphermans)** — Author & Lead Developer
+- **[Agent Zero](https://agent0.ai)** — AI Development Partner
+
+This project was built with **[Agent Zero](https://agent0.ai)**, an autonomous AI agent that helped architect, develop, and test the codebase.
 
 ---
 
