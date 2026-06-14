@@ -684,10 +684,26 @@ if [ "$TEST_MODE" -eq 1 ]; then
 else
 DEPS="python3 python3-venv python3-pip git curl nginx openssl"
 $SUDO apt-get install -y $DEPS &>/dev/null &
-spinner $! "Installing system packages"
+APT_PID=$!
+spinner $APT_PID "Installing system packages"
+wait $APT_PID
+APT_EXIT=$?
+if [ $APT_EXIT -ne 0 ]; then
+    echo -e "  ${CROSS} apt-get install failed (exit code $APT_EXIT)"
+    step_fail
+    exit 1
+fi
 # Verify key binaries
 if ! command -v python3 &>/dev/null; then
+    echo -e "  ${CROSS} python3 not found after install"
     step_fail
+    exit 1
+fi
+# Verify python3-venv is actually installed
+if ! python3 -m venv --help &>/dev/null; then
+    echo -e "  ${CROSS} python3-venv package installed but venv module not functional (try: apt-get install --reinstall python3-venv)"
+    step_fail
+    exit 1
 fi
 fi
 step_ok
