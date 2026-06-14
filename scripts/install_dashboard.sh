@@ -744,14 +744,23 @@ if [ "$TEST_MODE" -eq 1 ]; then
     echo -e "  ${INFO} [DRY RUN] Would execute step 5"
     step_skip
 else
+# Copy backend code if not already present
 if [ ! -d "$INSTALL_DIR/backend" ]; then
-    # Copy from current directory (assumes script is in project root)
     SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &>/dev/null && pwd )"
     PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
     $SUDO cp -r "$PROJECT_ROOT/backend" "$INSTALL_DIR/" || { echo -e "  ${CROSS} Failed to copy backend files"; step_fail; exit 1; }
 fi
-# Create .env file interactively
-cat <<EOF | $SUDO tee "$INSTALL_DIR/backend/.env" > /dev/null || { echo -e "  ${CROSS} Failed to create .env file"; step_fail; exit 1; }
+
+# Determine the real non-root user (works even when piped via curl|bash)
+REAL_USER="$(whoami)"
+if [ -z "$REAL_USER" ] || [ "$REAL_USER" = "root" ]; then
+    # Fallback to SUDO_USER if available (interactive sudo), or $USER
+    REAL_USER="${SUDO_USER:-$USER}"
+fi
+
+# Create .env file if it does not exist (preserves existing customizations)
+if [ ! -f "$INSTALL_DIR/backend/.env" ]; then
+    cat <<EOF | $SUDO tee "$INSTALL_DIR/backend/.env" > /dev/null || { echo -e "  ${CROSS} Failed to create .env file"; step_fail; exit 1; }
 # DHCH Dashboard Backend Configuration
 DATABASE_URL=sqlite:///$DATA_DIR/dhcp_dashboard.db
 SECRET_KEY=$SECRET_KEY
@@ -764,9 +773,13 @@ BACKEND_PORT=$BACKEND_PORT
 FRONTEND_URL=http://$SERVER_IP
 ENVIRONMENT=production
 EOF
+fi
+
+# Ensure .env has correct permissions
 $SUDO chmod 600 "$INSTALL_DIR/backend/.env"
-# Give ownership to the user so venv creation works in step 6
-CHOWN_ERR=$( $SUDO chown -R $USER:$USER "$INSTALL_DIR/backend" 2>&1 )
+
+# Always fix ownership (required on re-runs where directory exists from a failed attempt)
+CHOWN_ERR=$( $SUDO chown -R $REAL_USER:$REAL_USER "$INSTALL_DIR/backend" 2>&1 )
 if [ $? -ne 0 ]; then
     echo -e "  ${CROSS} Failed to change ownership of backend directory"
     echo -e "  ${GRAY}$CHOWN_ERR${NC}"
