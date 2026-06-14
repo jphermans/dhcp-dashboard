@@ -314,18 +314,33 @@ ADMIN_USER="${ADMIN_USER:-admin}"
 
 # --- Admin Password (masked) ---
 while true; do
-    printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Admin password${NC} ${GRAY}[random will be generated]${NC}: "
+    printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Admin password${NC} ${GRAY}[default: admin123]${NC}: "
     read -s ADMIN_PASS
     echo ""
     if [ -z "$ADMIN_PASS" ]; then
-        # Generate random password
-        ADMIN_PASS=$(openssl rand -base64 12 2>/dev/null || head -c 12 /dev/urandom | base64 | tr -d '+/=' 2>/dev/null || echo "changeme")
+        # No password given → use default
+        ADMIN_PASS="admin123"
+        echo -e "  ${INFO} ${GRAY}No password entered — using default password.${NC}"
         break
     elif [ ${#ADMIN_PASS} -lt 8 ]; then
         echo -e "  ${CROSS} ${LRED}Password must be at least 8 characters.${NC}"
-    else
-        break
+        continue
     fi
+
+    # Confirm password
+    printf "${BOLD}${LCYAN}  ➤${NC} ${WHITE}Confirm password${NC}: "
+    read -s ADMIN_PASS_CONFIRM
+    echo ""
+    if [ -z "$ADMIN_PASS_CONFIRM" ]; then
+        # No confirmation entered → fall back to default
+        ADMIN_PASS="admin123"
+        echo -e "  ${INFO} ${GRAY}No confirmation entered — using default password.${NC}"
+        break
+    elif [ "$ADMIN_PASS" != "$ADMIN_PASS_CONFIRM" ]; then
+        echo -e "  ${CROSS} ${LRED}Passwords do not match. Please try again.${NC}"
+        continue
+    fi
+    break
 done
 
 # --- Backend Port ---
